@@ -1,9 +1,6 @@
 export interface TokenResponse {
   access_token: string;
-  refresh_token: string;
   token_type: string;
-  user_id: string;
-  role: string;
 }
 
 export interface UserResponse {

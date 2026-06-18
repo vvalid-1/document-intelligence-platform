@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { login } from '@/lib/api/auth';
+import { login, getMe } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/store/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -29,11 +29,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await login(email, password);
+      localStorage.setItem('auth_token', res.access_token);
+      const user = await getMe();
       setAuth(res.access_token, {
-        id: res.user_id,
-        email,
-        full_name: email,
-        role: res.role,
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
       });
       router.push('/dashboard');
     } catch (err: unknown) {

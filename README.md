@@ -87,7 +87,7 @@ docker compose exec backend alembic upgrade head
 
 ```bash
 bash scripts/setup_demo.sh
-# Default: admin@demo.local / DemoPass123!
+# Default: admin@example.com / DemoPass123!
 # Or: bash scripts/setup_demo.sh your@email.com YourPassword "Your Name"
 ```
 

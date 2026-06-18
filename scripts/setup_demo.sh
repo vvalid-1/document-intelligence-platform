@@ -4,7 +4,7 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost}"
-EMAIL="${1:-admin@demo.local}"
+EMAIL="${1:-admin@example.com}"
 PASSWORD="${2:-DemoPass123!}"
 FULL_NAME="${3:-Demo Admin}"
 

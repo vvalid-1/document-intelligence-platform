@@ -36,8 +36,12 @@ export async function apiRequest<T>(
   if (!res.ok) {
     let detail = 'Request failed';
     try {
-      const body = (await res.json()) as { detail?: string };
-      if (body.detail) detail = body.detail;
+      const body = (await res.json()) as { detail?: unknown };
+      if (typeof body.detail === 'string') {
+        detail = body.detail;
+      } else if (Array.isArray(body.detail)) {
+        detail = (body.detail as Array<{ msg: string }>).map((e) => e.msg).join('; ');
+      }
     } catch {
       // ignore parse error
     }
