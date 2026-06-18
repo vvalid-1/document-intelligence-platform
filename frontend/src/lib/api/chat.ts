@@ -25,7 +25,7 @@ export function sendMessage(
 ): Promise<() => void> {
   return postSseStream(
     `/chat/sessions/${sessionId}/messages`,
-    { content },
+    { question: content },
     onChunk,
     onDone,
     onError,
