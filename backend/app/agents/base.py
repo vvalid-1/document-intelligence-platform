@@ -75,6 +75,7 @@ class BaseAgent:
             "model": settings.OLLAMA_CHAT_MODEL,
             "messages": messages,
             "stream": False,
+            "think": False,
             "options": {
                 "num_ctx": settings.OLLAMA_NUM_CTX,
                 "num_thread": settings.OLLAMA_NUM_THREAD,
