@@ -23,6 +23,10 @@ node_modules/
 out/
 frontend/.env.local
 
+# Uploaded files (runtime data — never commit)
+uploads/
+backend/uploads/
+
 # Docker volumes (local dev)
 postgres_data/
 chromadb_data/
