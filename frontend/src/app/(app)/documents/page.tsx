@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { listDocuments, deleteDocument } from '@/lib/api/documents';
 import type { DocumentResponse } from '@/types/api';
 import { Button } from '@/components/ui/Button';
 import { statusBadge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+
+const POLL_INTERVAL_MS = 2000;
 
 function fileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -20,23 +22,47 @@ export default function DocumentsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  async function load(p: number) {
-    setLoading(true);
+  function stopPoll() {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  async function load(p: number, silent = false) {
+    if (!silent) setLoading(true);
     try {
       const r = await listDocuments(p, 20);
       setDocs(r.items);
       setTotal(r.total);
+      const anyProcessing = r.items.some((d) => d.status === 'processing');
+      if (!anyProcessing) stopPoll();
     } catch {
       // ignore
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     void load(page);
+    return () => stopPoll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  useEffect(() => {
+    stopPoll();
+    const anyProcessing = docs.some((d) => d.status === 'processing');
+    if (anyProcessing) {
+      pollRef.current = setInterval(() => {
+        void load(page, true);
+      }, POLL_INTERVAL_MS);
+    }
+    return () => stopPoll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docs, page]);
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this document?')) return;

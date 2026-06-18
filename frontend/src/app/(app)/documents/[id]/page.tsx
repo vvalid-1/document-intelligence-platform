@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { getDocument } from '@/lib/api/documents';
@@ -9,6 +9,8 @@ import type { DocumentResponse, SignatureResponse } from '@/types/api';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { statusBadge } from '@/components/ui/Badge';
+
+const POLL_INTERVAL_MS = 2000;
 
 function fileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -25,15 +27,49 @@ export default function DocumentDetailPage() {
   const [doc, setDoc] = useState<DocumentResponse | null>(null);
   const [sigs, setSigs] = useState<SignatureResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopPoll() {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
 
   useEffect(() => {
-    Promise.all([getDocument(id), listSignatures(id)])
-      .then(([d, s]) => {
+    let cancelled = false;
+
+    async function init() {
+      try {
+        const [d, s] = await Promise.all([getDocument(id), listSignatures(id)]);
+        if (cancelled) return;
         setDoc(d);
         setSigs(s.items);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+
+        if (d.status === 'processing') {
+          pollRef.current = setInterval(async () => {
+            try {
+              const updated = await getDocument(id);
+              if (cancelled) return;
+              setDoc(updated);
+              if (updated.status !== 'processing') stopPoll();
+            } catch {
+              // ignore transient errors, keep polling
+            }
+          }, POLL_INTERVAL_MS);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void init();
+    return () => {
+      cancelled = true;
+      stopPoll();
+    };
   }, [id]);
 
   if (loading) {
@@ -70,6 +106,20 @@ export default function DocumentDetailPage() {
           <Button variant="ghost" size="sm">← Back</Button>
         </Link>
       </div>
+
+      {doc.status === 'processing' && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          Processing document — this page will update automatically.
+        </div>
+      )}
+
+      {doc.status === 'error' && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="font-medium">Processing failed</p>
+          {doc.error_message && <p className="mt-1 text-xs">{doc.error_message}</p>}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

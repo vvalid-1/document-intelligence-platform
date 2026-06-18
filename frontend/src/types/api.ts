@@ -12,7 +12,7 @@ export interface UserResponse {
   created_at: string;
 }
 
-export type DocumentStatus = 'pending' | 'processing' | 'ready' | 'failed';
+export type DocumentStatus = 'uploaded' | 'processing' | 'ready' | 'error';
 
 export interface DocumentResponse {
   id: string;
@@ -22,6 +22,7 @@ export interface DocumentResponse {
   file_size_bytes: number;
   mime_type: string;
   status: DocumentStatus;
+  error_message: string | null;
   page_count: number | null;
   chunk_count: number;
   is_deleted: boolean;

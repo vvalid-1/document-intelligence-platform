@@ -26,8 +26,8 @@ export function statusBadge(status: string) {
   const map: Record<string, { color: Color; label: string }> = {
     ready: { color: 'green', label: 'Ready' },
     processing: { color: 'yellow', label: 'Processing' },
-    pending: { color: 'gray', label: 'Pending' },
-    failed: { color: 'red', label: 'Failed' },
+    uploaded: { color: 'gray', label: 'Uploaded' },
+    error: { color: 'red', label: 'Error' },
   };
   const s = map[status] ?? { color: 'gray' as Color, label: status };
   return <Badge color={s.color}>{s.label}</Badge>;
