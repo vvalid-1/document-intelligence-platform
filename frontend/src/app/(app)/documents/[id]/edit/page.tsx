@@ -1,0 +1,130 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { editDocument } from '@/lib/api/edits';
+import type { EditResponse } from '@/types/api';
+import { Button } from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Input';
+import { Card, CardHeader } from '@/components/ui/Card';
+
+const EXAMPLES = [
+  'Fix all grammar and spelling errors',
+  'Make the tone more formal and professional',
+  'Add an executive summary at the beginning',
+  'Remove any redundant paragraphs',
+];
+
+export default function EditPage() {
+  const { id } = useParams<{ id: string }>();
+  const [instruction, setInstruction] = useState('');
+  const [result, setResult] = useState<EditResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleEdit() {
+    if (!instruction.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const r = await editDocument(id, instruction.trim());
+      setResult(r);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Edit failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="p-8">
+      <div className="mb-6 flex items-center gap-3">
+        <Link href={`/documents/${id}`}>
+          <Button variant="ghost" size="sm">←</Button>
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900">Edit document</h1>
+      </div>
+
+      <div className="mx-auto max-w-2xl space-y-6">
+        <Card>
+          <CardHeader
+            title="Edit instruction"
+            subtitle="Describe what changes you want the AI to make"
+          />
+          <div className="space-y-4">
+            <Textarea
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              placeholder="e.g. Fix grammar errors and improve clarity"
+              rows={4}
+              maxLength={2000}
+            />
+            <div className="flex flex-wrap gap-2">
+              {EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  onClick={() => setInstruction(ex)}
+                  className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+            {error && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            )}
+            <Button
+              className="w-full"
+              loading={loading}
+              disabled={!instruction.trim()}
+              onClick={() => void handleEdit()}
+            >
+              Apply edit
+            </Button>
+            {loading && (
+              <p className="text-center text-xs text-gray-400">
+                AI is rewriting your document — this may take 30–120 seconds…
+              </p>
+            )}
+          </div>
+        </Card>
+
+        {result && (
+          <Card>
+            <CardHeader
+              title={`Version ${result.version_number} created`}
+              subtitle={result.change_summary}
+            />
+            <div className="rounded-lg bg-gray-50 p-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                Preview (first 500 chars)
+              </p>
+              <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
+                {result.text_preview}
+              </p>
+            </div>
+            <div className="mt-4 flex gap-3">
+              <a
+                href={`/api/v1/documents/${id}/versions/${result.version_number}/download?fmt=pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Download PDF
+              </a>
+              <a
+                href={`/api/v1/documents/${id}/versions/${result.version_number}/download?fmt=txt`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Download TXT
+              </a>
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}

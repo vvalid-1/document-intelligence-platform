@@ -1,0 +1,12 @@
+node_modules
+.next
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+.env
+.env.local
+.env.development
+.env.production
+coverage/
+.nyc_output/

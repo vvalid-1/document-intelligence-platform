@@ -1,0 +1,39 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    environment:
+      - LOG_LEVEL=DEBUG
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  # Expose ports directly in dev for easier debugging
+  postgres:
+    ports:
+      - "5432:5432"
+
+  chromadb:
+    ports:
+      - "8001:8001"
+
+  ollama:
+    ports:
+      - "11434:11434"
+
+  backend_direct:
+    extends:
+      service: backend
+    ports:
+      - "8000:8000"
