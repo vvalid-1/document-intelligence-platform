@@ -6,7 +6,7 @@ ollama serve &
 OLLAMA_PID=$!
 
 echo "[ollama-entrypoint] Waiting for Ollama API to be ready..."
-until curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; do
+until bash -c 'echo > /dev/tcp/127.0.0.1/11434' 2>/dev/null; do
   sleep 2
 done
 echo "[ollama-entrypoint] Ollama API is ready."

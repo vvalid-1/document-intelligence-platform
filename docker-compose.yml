@@ -43,7 +43,7 @@ services:
   # ─── ChromaDB ──────────────────────────────────────────────────────────────
   # Listens on port 8000 by default. No curl/python in image — use bash /dev/tcp.
   chromadb:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.5.23
     volumes:
       - chromadb_data:/chroma/chroma
     environment:
