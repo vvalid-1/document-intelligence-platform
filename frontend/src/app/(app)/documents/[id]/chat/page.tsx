@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSession, listMessages, sendMessage } from '@/lib/api/chat';
-import type { ChatMessageResponse } from '@/types/api';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  streaming?: boolean;
+  pending?: boolean;
 }
 
 export default function ChatPage() {
@@ -28,11 +27,9 @@ export default function ChatPage() {
       .then(async (s) => {
         setSessionId(s.id);
         const history = await listMessages(s.id);
-        setMessages(
-          history.map((m: ChatMessageResponse) => ({ role: m.role, content: m.content })),
-        );
+        setMessages(history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })));
       })
-      .catch(() => setError('Failed to start session'));
+      .catch(() => setError('Failed to start chat session'));
   }, [id]);
 
   useEffect(() => {
@@ -44,37 +41,27 @@ export default function ChatPage() {
     const userMsg = input.trim();
     setInput('');
     setError('');
-    setMessages((prev) => [...prev, { role: 'user', content: userMsg }]);
-    setMessages((prev) => [...prev, { role: 'assistant', content: '', streaming: true }]);
     setBusy(true);
 
-    await sendMessage(
-      sessionId,
-      userMsg,
-      (token) => {
-        setMessages((prev) => {
-          const copy = [...prev];
-          const last = copy[copy.length - 1];
-          if (last && last.role === 'assistant') {
-            copy[copy.length - 1] = { ...last, content: last.content + token };
-          }
-          return copy;
-        });
-      },
-      () => {
-        setMessages((prev) => {
-          const copy = [...prev];
-          const last = copy[copy.length - 1];
-          if (last) copy[copy.length - 1] = { ...last, streaming: false };
-          return copy;
-        });
-        setBusy(false);
-      },
-      (err) => {
-        setError(err);
-        setBusy(false);
-      },
-    );
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: userMsg },
+      { role: 'assistant', content: '', pending: true },
+    ]);
+
+    try {
+      const r = await sendMessage(sessionId, userMsg);
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: 'assistant', content: r.answer };
+        return copy;
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to get response');
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -96,9 +83,17 @@ export default function ChatPage() {
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-800'}`}
+                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  m.role === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-200 bg-white text-gray-800'
+                }`}
               >
-                {m.content || (m.streaming ? <span className="animate-pulse">▌</span> : '')}
+                {m.pending ? (
+                  <span className="animate-pulse">▌</span>
+                ) : (
+                  m.content
+                )}
               </div>
             </div>
           ))}
@@ -128,12 +123,16 @@ export default function ChatPage() {
               }
             }}
           />
-          <Button onClick={() => void handleSend()} loading={busy} disabled={!input.trim() || !sessionId}>
+          <Button
+            onClick={() => void handleSend()}
+            loading={busy}
+            disabled={!input.trim() || !sessionId}
+          >
             Send
           </Button>
         </div>
         <p className="mx-auto mt-1.5 max-w-2xl text-xs text-gray-400">
-          Enter to send · Shift+Enter for new line
+          Enter to send · Shift+Enter for new line · Response may take up to 3 minutes on CPU
         </p>
       </div>
     </div>

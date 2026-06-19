@@ -48,10 +48,10 @@ export interface Source {
 
 export interface ChatMessageResponse {
   id: string;
-  session_id: string;
   role: 'user' | 'assistant';
   content: string;
-  sources: Source[];
+  agent_name: string | null;
+  sequence_num: number;
   created_at: string;
 }
 
@@ -59,10 +59,29 @@ export interface ChatSessionResponse {
   id: string;
   user_id: string;
   session_name: string | null;
-  document_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  messages?: ChatMessageResponse[];
+}
+
+export interface ChatSourceCitation {
+  source_num: number;
+  chunk_index: number;
+  document_id: string;
+  document_title: string;
+  page_number: number | null;
+  excerpt: string;
+  similarity_score: number;
+}
+
+export interface ChatResponse {
+  message_id: string;
+  session_id: string;
+  answer: string;
+  sources: ChatSourceCitation[];
+  task_id: string;
+  token_count: number | null;
 }
 
 export interface ReviewIssue {
@@ -76,15 +95,12 @@ export interface ReviewIssue {
 export interface ReviewResponse {
   id: string;
   document_id: string;
-  version_id: string | null;
-  version_number: number;
-  task_id: string | null;
-  review_summary: string;
-  issue_count: number;
-  clarity_score: number | null;
-  consistency_score: number | null;
-  completeness_score: number | null;
+  task_id: string;
+  reviewer_id: string;
+  overall_score: number | null;
+  summary: string | null;
   issues: ReviewIssue[];
+  issue_count: number;
   created_at: string;
 }
 

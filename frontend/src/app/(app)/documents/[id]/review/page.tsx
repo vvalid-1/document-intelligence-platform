@@ -95,14 +95,12 @@ export default function ReviewPage() {
           <Card>
             <CardHeader
               title="Review summary"
-              subtitle={`Version ${review.version_number} · ${review.issue_count} issue${review.issue_count !== 1 ? 's' : ''} found`}
+              subtitle={`${review.issue_count} issue${review.issue_count !== 1 ? 's' : ''} found`}
             />
-            <p className="text-sm text-gray-700 leading-relaxed">{review.review_summary}</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{review.summary ?? '—'}</p>
 
             <div className="mt-5 space-y-3">
-              <ScoreBar label="Clarity" value={review.clarity_score} />
-              <ScoreBar label="Consistency" value={review.consistency_score} />
-              <ScoreBar label="Completeness" value={review.completeness_score} />
+              <ScoreBar label="Overall score" value={review.overall_score != null ? review.overall_score / 10 : null} />
             </div>
           </Card>
 

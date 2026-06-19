@@ -1,5 +1,5 @@
-import type { ChatMessageResponse, ChatSessionResponse } from '@/types/api';
-import { apiGet, apiPost, postSseStream } from './client';
+import type { ChatMessageResponse, ChatResponse, ChatSessionResponse } from '@/types/api';
+import { apiGet, apiPost } from './client';
 
 export function createSession(documentId?: string): Promise<ChatSessionResponse> {
   return apiPost<ChatSessionResponse>('/chat/sessions', {
@@ -12,22 +12,14 @@ export function getSession(id: string): Promise<ChatSessionResponse> {
   return apiGet<ChatSessionResponse>(`/chat/sessions/${id}`);
 }
 
-export function listMessages(sessionId: string): Promise<ChatMessageResponse[]> {
-  return apiGet<ChatMessageResponse[]>(`/chat/sessions/${sessionId}/messages`);
+export async function listMessages(sessionId: string): Promise<ChatMessageResponse[]> {
+  const session = await getSession(sessionId);
+  return session.messages ?? [];
 }
 
 export function sendMessage(
   sessionId: string,
-  content: string,
-  onChunk: (token: string) => void,
-  onDone: () => void,
-  onError: (err: string) => void,
-): Promise<() => void> {
-  return postSseStream(
-    `/chat/sessions/${sessionId}/messages`,
-    { question: content },
-    onChunk,
-    onDone,
-    onError,
-  );
+  question: string,
+): Promise<ChatResponse> {
+  return apiPost<ChatResponse>(`/chat/sessions/${sessionId}/messages`, { question });
 }
