@@ -16,7 +16,7 @@ A production-ready, fully local Document Intelligence Platform powered by multi-
 | Document Versioning | Every AI action creates a new version; originals are never overwritten |
 | Full Audit Trail | All actions logged to `audit_logs` with user, timestamp, and details |
 | Role-Based Access | Admin · Editor · Viewer roles with fine-grained endpoint guards |
-| Fully Local LLM | Ollama + Qwen3:8b for chat/edit/review; bge-m3 for embeddings |
+| Fully Local LLM | Ollama + Qwen2.5:3b for chat/edit/review; bge-m3 for embeddings |
 
 ---
 
@@ -28,7 +28,7 @@ A production-ready, fully local Document Intelligence Platform powered by multi-
 | Backend | FastAPI 0.115 (Python 3.11, async SQLAlchemy 2.0) |
 | Primary DB | PostgreSQL 16 |
 | Vector DB | ChromaDB |
-| LLM | Ollama — qwen3:8b (chat/edit/review) + bge-m3 (embeddings) |
+| LLM | Ollama — qwen2.5:3b (chat/edit/review) + bge-m3 (embeddings) |
 | OCR | Tesseract (via pytesseract) |
 | PDF | PyMuPDF (fitz) |
 | Auth | JWT access tokens + opaque refresh tokens |
@@ -65,7 +65,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 ### 2. Pull Ollama models (first-time only)
 
 ```bash
-docker compose run --rm ollama ollama pull qwen3:8b
+docker compose run --rm ollama ollama pull qwen2.5:3b
 docker compose run --rm ollama ollama pull bge-m3
 ```
 
@@ -153,7 +153,7 @@ All variables are documented in `.env.example`. Key variables:
 | `DATABASE_URL` | Yes | — | PostgreSQL DSN (`postgresql+asyncpg://...`) |
 | `JWT_SECRET_KEY` | Yes | — | ≥ 32 chars, cryptographically random |
 | `OLLAMA_HOST` | No | `http://ollama:11434` | Ollama service URL |
-| `OLLAMA_CHAT_MODEL` | No | `qwen3:8b` | Chat / edit / review model |
+| `OLLAMA_CHAT_MODEL` | No | `qwen2.5:3b` | Chat / edit / review model |
 | `OLLAMA_EMBED_MODEL` | No | `bge-m3` | Embedding model |
 | `OLLAMA_NUM_CTX` | No | `4096` | LLM context window (tokens) |
 | `OLLAMA_NUM_THREAD` | No | `4` | CPU threads for Ollama |

@@ -22,7 +22,7 @@ pull_if_missing() {
   fi
 }
 
-pull_if_missing "qwen3:8b"
+pull_if_missing "qwen2.5:3b"
 pull_if_missing "bge-m3"
 
 echo "[ollama-entrypoint] All models ready. Keeping Ollama running..."
