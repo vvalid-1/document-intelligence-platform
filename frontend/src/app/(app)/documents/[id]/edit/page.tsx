@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { editDocument } from '@/lib/api/edits';
+import { downloadVersion } from '@/lib/api/documents';
 import type { EditResponse } from '@/types/api';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
@@ -22,6 +23,20 @@ export default function EditPage() {
   const [result, setResult] = useState<EditResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [downloadingFmt, setDownloadingFmt] = useState<'pdf' | 'txt' | null>(null);
+
+  async function handleDownload(fmt: 'pdf' | 'txt') {
+    if (!result) return;
+    setDownloadingFmt(fmt);
+    try {
+      const baseName = result.document_id.slice(0, 8);
+      await downloadVersion(id, result.id, fmt, `v${result.version_number}_${baseName}.${fmt}`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloadingFmt(null);
+    }
+  }
 
   async function handleEdit() {
     if (!instruction.trim()) return;
@@ -105,22 +120,24 @@ export default function EditPage() {
               </p>
             </div>
             <div className="mt-4 flex gap-3">
-              <a
-                href={`/api/v1/documents/${id}/versions/${result.version_number}/download?fmt=pdf`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-blue-600 hover:underline"
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={downloadingFmt === 'pdf'}
+                disabled={downloadingFmt !== null}
+                onClick={() => void handleDownload('pdf')}
               >
                 Download PDF
-              </a>
-              <a
-                href={`/api/v1/documents/${id}/versions/${result.version_number}/download?fmt=txt`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-blue-600 hover:underline"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={downloadingFmt === 'txt'}
+                disabled={downloadingFmt !== null}
+                onClick={() => void handleDownload('txt')}
               >
                 Download TXT
-              </a>
+              </Button>
             </div>
           </Card>
         )}

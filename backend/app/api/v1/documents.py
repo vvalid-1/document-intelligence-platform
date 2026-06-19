@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Annotated, Any, Optional
 
 import aiofiles
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -525,8 +525,9 @@ async def list_versions(
 async def download_version(
     document_id: uuid.UUID,
     version_id: uuid.UUID,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    fmt: str = Query(default="pdf", pattern="^(pdf|txt)$"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> FileResponse:
     await _get_doc_or_404(document_id, current_user, db)
     res = await db.execute(
@@ -538,10 +539,20 @@ async def download_version(
     version = res.scalar_one_or_none()
     if version is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Version not found")
-    path = resolve_upload_path(version.file_path)
+
+    meta: dict = version.version_metadata or {}
+    if fmt == "txt" and meta.get("txt_path"):
+        file_rel = meta["txt_path"]
+    else:
+        file_rel = version.file_path
+
+    path = resolve_upload_path(file_rel)
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Version file not found")
-    return FileResponse(path=str(path), filename=f"v{version.version_number}_{path.name}")
+
+    ext = "txt" if fmt == "txt" else "pdf"
+    filename = f"v{version.version_number}_{path.stem}.{ext}"
+    return FileResponse(path=str(path), filename=filename, media_type=f"application/{'octet-stream' if fmt == 'txt' else 'pdf'}")
 
 
 # ── Summarize ─────────────────────────────────────────────────────────────────
