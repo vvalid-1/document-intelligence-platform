@@ -72,6 +72,15 @@ def extract_text_docx(path: Path) -> str:
     return "\n".join(parts)
 
 
+def extract_text_image(path: Path) -> str:
+    try:
+        img = Image.open(str(path))
+        return pytesseract.image_to_string(img, timeout=_OCR_TIMEOUT).strip()
+    except Exception as exc:
+        logger.warning("OCR failed on image %s: %s", path.name, exc)
+        return ""
+
+
 def extract_text_txt(path: Path) -> str:
     raw = path.read_bytes()
     detected = chardet.detect(raw)

@@ -39,12 +39,18 @@ _MIME_MAP = {
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".txt": "text/plain",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
 }
+
+_IMAGE_MIMES = {"image/jpeg", "image/png"}
 
 # Maps processing_step → approximate progress percent
 _STEP_PROGRESS: dict[str | None, int] = {
     "queued": 5,
     "extracting": 20,
+    "ocr": 30,
     "chunking": 50,
     "embedding": 70,
 }
@@ -79,6 +85,7 @@ async def _process_document(
         chunk_plain_text,
         extract_pdf_metadata,
         extract_text_docx,
+        extract_text_image,
         extract_text_pdf,
         extract_text_txt,
     )
@@ -125,6 +132,11 @@ async def _process_document(
         elif "wordprocessingml" in mime:
             text = extract_text_docx(file_path)
             doc_metadata = {"word_count": len(text.split())}
+            chunks = chunk_plain_text(text, settings.CHUNK_SIZE, settings.CHUNK_OVERLAP)
+        elif mime in _IMAGE_MIMES:
+            await _set(processing_step="ocr")
+            text = extract_text_image(file_path)
+            doc_metadata = {"word_count": len(text.split()), "source": "ocr"}
             chunks = chunk_plain_text(text, settings.CHUNK_SIZE, settings.CHUNK_OVERLAP)
         else:
             text = extract_text_txt(file_path)

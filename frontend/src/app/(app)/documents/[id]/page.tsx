@@ -188,9 +188,11 @@ export default function DocumentDetailPage() {
       </div>
 
       {doc.status === 'processing' && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          Processing document — this page will update automatically.
+          {doc.processing_step === 'ocr'
+            ? 'Running OCR to extract text from image — this may take a moment…'
+            : 'Processing document — this page will update automatically.'}
         </div>
       )}
 

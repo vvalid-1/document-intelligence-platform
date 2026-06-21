@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader } from '@/components/ui/Card';
 
-const ACCEPTED = '.pdf,.docx,.txt';
+const ACCEPTED = '.pdf,.docx,.txt,.jpg,.jpeg,.png';
 const MAX_MB = 50;
 
 export default function UploadPage() {
@@ -56,7 +56,7 @@ export default function UploadPage() {
 
       <div className="mx-auto max-w-lg">
         <Card>
-          <CardHeader title="Select a file" subtitle="PDF, DOCX, or TXT — max 50 MB" />
+          <CardHeader title="Select a file" subtitle="PDF, DOCX, TXT, JPG, or PNG — max 50 MB" />
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div
@@ -91,7 +91,7 @@ export default function UploadPage() {
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) pickFile(f); }}
                     />
                   </label>
-                  <p className="mt-2 text-xs text-gray-400 dark:text-slate-500">PDF · DOCX · TXT</p>
+                  <p className="mt-2 text-xs text-gray-400 dark:text-slate-500">PDF · DOCX · TXT · JPG · PNG</p>
                 </>
               )}
             </div>

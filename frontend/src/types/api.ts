@@ -22,6 +22,7 @@ export interface DocumentResponse {
   file_size_bytes: number;
   mime_type: string;
   status: DocumentStatus;
+  processing_step: string | null;
   error_message: string | null;
   page_count: number | null;
   chunk_count: number;

@@ -15,6 +15,9 @@ _ALLOWED: dict[str, tuple[set[str], bytes]] = {
         b"PK\x03\x04",
     ),
     ".txt": ({"text/plain"}, b""),  # no magic bytes for txt
+    ".jpg": ({"image/jpeg"}, b"\xff\xd8\xff"),
+    ".jpeg": ({"image/jpeg"}, b"\xff\xd8\xff"),
+    ".png": ({"image/png"}, b"\x89PNG"),
 }
 
 

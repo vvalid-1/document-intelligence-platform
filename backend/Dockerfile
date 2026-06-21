@@ -9,6 +9,8 @@ RUN addgroup --gid 1000 appgroup && \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-eng \
+    tesseract-ocr-fra \
+    tesseract-ocr-ara \
     poppler-utils \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
