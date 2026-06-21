@@ -1,4 +1,4 @@
-import type { DocumentListResponse, DocumentResponse, DocumentVersionListItem } from '@/types/api';
+import type { DocumentListResponse, DocumentResponse, DocumentStatsResponse, DocumentVersionListItem } from '@/types/api';
 import { apiDelete, apiGet, apiRequest, getToken } from './client';
 
 export function listDocuments(page = 1, pageSize = 20): Promise<DocumentListResponse> {
@@ -18,6 +18,10 @@ export function uploadDocument(file: File, title?: string): Promise<DocumentResp
 
 export function deleteDocument(id: string): Promise<void> {
   return apiDelete<void>(`/documents/${id}`);
+}
+
+export function getDocumentStats(): Promise<DocumentStatsResponse> {
+  return apiGet<DocumentStatsResponse>('/documents/stats');
 }
 
 export function listVersions(documentId: string): Promise<DocumentVersionListItem[]> {

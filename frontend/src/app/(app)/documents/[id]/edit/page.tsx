@@ -56,9 +56,9 @@ export default function EditPage() {
   return (
     <div className="flex h-full">
       {/* PDF panel */}
-      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col">
-        <div className="border-b border-gray-200 bg-white px-4 py-2">
-          <span className="text-xs font-medium text-gray-500">Document preview</span>
+      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col dark:border-slate-700">
+        <div className="border-b border-gray-200 bg-white px-4 py-2 dark:bg-slate-800 dark:border-slate-700">
+          <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Document preview</span>
         </div>
         <div className="flex-1 overflow-hidden">
           <PdfPreview documentId={id} className="h-full" />
@@ -71,7 +71,7 @@ export default function EditPage() {
           <Link href={`/documents/${id}`}>
             <Button variant="ghost" size="sm">←</Button>
           </Link>
-          <h1 className="text-xl font-bold text-gray-900">Edit document</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Edit document</h1>
         </div>
 
         <div className="mx-auto max-w-2xl space-y-6">
@@ -93,7 +93,7 @@ export default function EditPage() {
                   <button
                     key={ex}
                     onClick={() => setInstruction(ex)}
-                    className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                    className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
                   >
                     {ex}
                   </button>
@@ -124,11 +124,11 @@ export default function EditPage() {
                 title={`Version ${result.version_number} created`}
                 subtitle={result.change_summary}
               />
-              <div className="rounded-lg bg-gray-50 p-4">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+              <div className="rounded-lg bg-gray-50 p-4 dark:bg-slate-700">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">
                   Preview (first 500 chars)
                 </p>
-                <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
+                <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed dark:text-slate-100">
                   {result.text_preview}
                 </p>
               </div>

@@ -83,8 +83,8 @@ export default function DocumentsPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Documents</h1>
-          <p className="mt-0.5 text-sm text-gray-500">{total} total</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Documents</h1>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{total} total</p>
         </div>
         <Link href="/documents/upload">
           <Button>Upload document</Button>
@@ -105,7 +105,7 @@ export default function DocumentsPage() {
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+            <thead className="border-b border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
               <tr>
                 <th className="px-6 py-3 text-left">Document</th>
                 <th className="px-6 py-3 text-left">Status</th>
@@ -114,18 +114,18 @@ export default function DocumentsPage() {
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {docs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50">
+                <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
                   <td className="px-6 py-3">
-                    <Link href={`/documents/${doc.id}`} className="font-medium text-gray-900 hover:text-blue-600">
+                    <Link href={`/documents/${doc.id}`} className="font-medium text-gray-900 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400">
                       {doc.title}
                     </Link>
-                    <p className="text-xs text-gray-400">{doc.original_name}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">{doc.original_name}</p>
                   </td>
                   <td className="px-6 py-3">{statusBadge(doc.status)}</td>
-                  <td className="px-6 py-3 text-gray-500">{fileSize(doc.file_size_bytes)}</td>
-                  <td className="px-6 py-3 text-gray-500">{doc.page_count ?? '—'}</td>
+                  <td className="px-6 py-3 text-gray-500 dark:text-slate-400">{fileSize(doc.file_size_bytes)}</td>
+                  <td className="px-6 py-3 text-gray-500 dark:text-slate-400">{doc.page_count ?? '—'}</td>
                   <td className="px-6 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/documents/${doc.id}`}>
@@ -148,11 +148,11 @@ export default function DocumentsPage() {
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-6 py-3">
+          <div className="flex items-center justify-between border-t border-gray-100 px-6 py-3 dark:border-slate-700">
             <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               Previous
             </Button>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-500 dark:text-slate-400">
               Page {page} of {totalPages}
             </span>
             <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>

@@ -17,7 +17,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_editor_or_admin, validate_sse_token
-from app.models.document import Document, DocumentChunk, DocumentVersion
+from app.models.document import Document, DocumentChunk, DocumentReview, DocumentVersion
 from app.models.user import User
 from app.schemas.document import (
     DocumentListResponse,
@@ -402,6 +402,40 @@ async def list_documents(
         page=page,
         page_size=page_size,
     )
+
+
+# ── Stats ─────────────────────────────────────────────────────────────────────
+
+@router.get("/stats")
+async def get_document_stats(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> dict[str, int]:
+    base: list = [Document.is_deleted.is_(False)]
+    if current_user.role == "viewer":
+        base.append(Document.owner_id == current_user.id)
+
+    async def _count(stmt) -> int:
+        return (await db.execute(stmt)).scalar_one()
+
+    total = await _count(select(func.count(Document.id)).where(*base))
+    ready = await _count(select(func.count(Document.id)).where(*base, Document.status == "ready"))
+
+    ver_q = (
+        select(func.count(DocumentVersion.id))
+        .join(Document, DocumentVersion.document_id == Document.id)
+        .where(*base)
+    )
+    edits = await _count(ver_q.where(DocumentVersion.agent_name == "editor"))
+    signatures = await _count(ver_q.where(DocumentVersion.agent_name == "signature"))
+
+    reviews = await _count(
+        select(func.count(DocumentReview.id))
+        .join(Document, DocumentReview.document_id == Document.id)
+        .where(*base)
+    )
+
+    return {"total": total, "ready": ready, "reviews": reviews, "edits": edits, "signatures": signatures}
 
 
 # ── Detail ────────────────────────────────────────────────────────────────────

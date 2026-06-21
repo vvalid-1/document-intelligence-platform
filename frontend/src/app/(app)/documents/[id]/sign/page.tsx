@@ -114,9 +114,9 @@ export default function SignPage() {
   return (
     <div className="flex h-full">
       {/* PDF panel */}
-      <div className="hidden w-5/12 shrink-0 border-r border-gray-100 lg:flex lg:flex-col">
-        <div className="border-b border-gray-100 bg-white px-4 py-2.5">
-          <span className="text-xs font-medium text-gray-500">Document preview</span>
+      <div className="hidden w-5/12 shrink-0 border-r border-gray-100 lg:flex lg:flex-col dark:border-slate-700">
+        <div className="border-b border-gray-100 bg-white px-4 py-2.5 dark:bg-slate-800 dark:border-slate-700">
+          <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Document preview</span>
         </div>
         <div className="flex-1 overflow-hidden">
           <PdfPreview documentId={id} className="h-full" />
@@ -129,7 +129,7 @@ export default function SignPage() {
           <Link href={`/documents/${id}`}>
             <Button variant="ghost" size="sm">←</Button>
           </Link>
-          <h1 className="text-xl font-bold text-gray-900">Sign document</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Sign document</h1>
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row">
@@ -144,8 +144,8 @@ export default function SignPage() {
                     onClick={() => handleModeChange(mode)}
                     className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
                       drawMode === mode
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-700'
                     }`}
                   >
                     {MODE_LABELS[mode]}
@@ -165,7 +165,7 @@ export default function SignPage() {
                 )}
                 {drawMode === 'draw' && (
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                    <label className="mb-2 block text-sm font-medium text-gray-800 dark:text-slate-300">
                       Draw your signature
                     </label>
                     <SignatureCanvas ref={canvasRef} onChange={setHasDrawn} />
@@ -184,7 +184,7 @@ export default function SignPage() {
                 )}
                 {drawMode === 'upload' && (
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-800">
+                    <label className="mb-2 block text-sm font-medium text-gray-800 dark:text-slate-300">
                       Signature image (PNG)
                     </label>
                     <input
@@ -277,11 +277,11 @@ export default function SignPage() {
 
           {/* Coordinate grid — click to place */}
           <div className="shrink-0">
-            <p className="mb-2 text-sm font-medium text-gray-700">Click to place on page</p>
+            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">Click to place on page</p>
             <div
               ref={previewRef}
               onClick={handlePreviewClick}
-              className="relative cursor-crosshair overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-white shadow-sm"
+              className="relative cursor-crosshair overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-white shadow-sm dark:bg-slate-800 dark:border-slate-600"
               style={{ width: PAGE_W * SCALE, height: PAGE_H * SCALE }}
             >
               <div className="absolute inset-0 opacity-10">
@@ -310,11 +310,11 @@ export default function SignPage() {
                 </div>
               )}
 
-              <p className="absolute bottom-2 left-0 right-0 text-center text-[9px] text-gray-300">
+              <p className="absolute bottom-2 left-0 right-0 text-center text-[9px] text-gray-300 dark:text-slate-600">
                 A4 · {PAGE_W} × {PAGE_H} pt · Click to place
               </p>
             </div>
-            <p className="mt-1.5 text-xs text-gray-400">x={x}, y={y}</p>
+            <p className="mt-1.5 text-xs text-gray-400 dark:text-slate-500">x={x}, y={y}</p>
           </div>
         </div>
       </div>

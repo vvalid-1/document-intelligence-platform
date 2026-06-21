@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { logout } from '@/lib/api/auth';
 import { clearToken } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/store/auth';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: '⊞' },
@@ -77,6 +78,7 @@ export function Sidebar() {
             </div>
           </div>
         )}
+        <ThemeToggle />
         <button
           onClick={handleLogout}
           className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-300"

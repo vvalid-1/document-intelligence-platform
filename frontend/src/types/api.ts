@@ -38,6 +38,14 @@ export interface DocumentListResponse {
   page_size: number;
 }
 
+export interface DocumentStatsResponse {
+  total: number;
+  ready: number;
+  reviews: number;
+  edits: number;
+  signatures: number;
+}
+
 export interface Source {
   document_id: string;
   chunk_id: string;

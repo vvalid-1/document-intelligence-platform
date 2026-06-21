@@ -15,10 +15,10 @@ function ScoreBar({ label, value }: { label: string; value: number | null }) {
   return (
     <div>
       <div className="mb-1 flex justify-between text-xs">
-        <span className="text-gray-600">{label}</span>
+        <span className="text-gray-600 dark:text-slate-400">{label}</span>
         <span className="font-medium">{pct != null ? `${pct}%` : '—'}</span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-gray-100">
+      <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-slate-700">
         <div
           className="h-1.5 rounded-full bg-blue-500 transition-all"
           style={{ width: `${pct ?? 0}%` }}
@@ -30,17 +30,17 @@ function ScoreBar({ label, value }: { label: string; value: number | null }) {
 
 function IssueRow({ issue }: { issue: ReviewIssue }) {
   return (
-    <div className="rounded-lg border border-gray-100 p-4">
+    <div className="rounded-lg border border-gray-100 p-4 dark:border-slate-700">
       <div className="mb-1 flex items-center gap-2">
         {severityBadge(issue.severity)}
-        <span className="text-xs font-medium text-gray-700 capitalize">{issue.type}</span>
+        <span className="text-xs font-medium text-gray-700 capitalize dark:text-slate-300">{issue.type}</span>
       </div>
-      <p className="text-sm text-gray-800">{issue.description}</p>
+      <p className="text-sm text-gray-800 dark:text-slate-100">{issue.description}</p>
       {issue.location && (
-        <p className="mt-1 text-xs text-gray-500">Location: {issue.location}</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">Location: {issue.location}</p>
       )}
       {issue.suggestion && (
-        <p className="mt-1 text-xs text-gray-500 italic">Suggestion: {issue.suggestion}</p>
+        <p className="mt-1 text-xs text-gray-500 italic dark:text-slate-400">Suggestion: {issue.suggestion}</p>
       )}
     </div>
   );
@@ -68,9 +68,9 @@ export default function ReviewPage() {
   return (
     <div className="flex h-full">
       {/* PDF panel */}
-      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col">
-        <div className="border-b border-gray-200 bg-white px-4 py-2">
-          <span className="text-xs font-medium text-gray-500">Document preview</span>
+      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col dark:border-slate-700">
+        <div className="border-b border-gray-200 bg-white px-4 py-2 dark:bg-slate-800 dark:border-slate-700">
+          <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Document preview</span>
         </div>
         <div className="flex-1 overflow-hidden">
           <PdfPreview documentId={id} className="h-full" />
@@ -83,7 +83,7 @@ export default function ReviewPage() {
           <Link href={`/documents/${id}`}>
             <Button variant="ghost" size="sm">←</Button>
           </Link>
-          <h1 className="text-xl font-bold text-gray-900">Document review</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Document review</h1>
         </div>
 
         {!review ? (
@@ -110,7 +110,7 @@ export default function ReviewPage() {
                 title="Review summary"
                 subtitle={`${review.issue_count} issue${review.issue_count !== 1 ? 's' : ''} found`}
               />
-              <p className="text-sm text-gray-700 leading-relaxed">{review.summary ?? '—'}</p>
+              <p className="text-sm text-gray-700 leading-relaxed dark:text-slate-300">{review.summary ?? '—'}</p>
 
               <div className="mt-5 space-y-3">
                 <ScoreBar

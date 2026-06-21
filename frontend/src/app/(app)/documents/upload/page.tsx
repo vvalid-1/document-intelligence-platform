@@ -52,7 +52,7 @@ export default function UploadPage() {
 
   return (
     <div className="p-8">
-      <h1 className="mb-6 text-xl font-bold text-gray-900">Upload document</h1>
+      <h1 className="mb-6 text-xl font-bold text-gray-900 dark:text-slate-100">Upload document</h1>
 
       <div className="mx-auto max-w-lg">
         <Card>
@@ -63,12 +63,12 @@ export default function UploadPage() {
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
-              className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 transition-colors ${dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+              className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 transition-colors ${dragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 hover:border-gray-400 dark:border-slate-600 dark:hover:border-slate-500'}`}
             >
               {file ? (
                 <div className="text-center">
-                  <p className="font-medium text-gray-900">{file.name}</p>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="font-medium text-gray-900 dark:text-slate-100">{file.name}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                   <button
@@ -81,7 +81,7 @@ export default function UploadPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-gray-500">Drag and drop here, or</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">Drag and drop here, or</p>
                   <label className="mt-2 cursor-pointer text-sm font-medium text-blue-600 hover:underline">
                     browse files
                     <input
@@ -91,7 +91,7 @@ export default function UploadPage() {
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) pickFile(f); }}
                     />
                   </label>
-                  <p className="mt-2 text-xs text-gray-400">PDF · DOCX · TXT</p>
+                  <p className="mt-2 text-xs text-gray-400 dark:text-slate-500">PDF · DOCX · TXT</p>
                 </>
               )}
             </div>

@@ -21,19 +21,19 @@ export function ActivityTimeline({ events }: { events: TimelineEvent[] }) {
       {sorted.map((ev, i) => (
         <div key={i} className="flex gap-3">
           <div className="flex flex-col items-center">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm dark:bg-blue-900/40">
               {ev.icon}
             </div>
             {i < sorted.length - 1 && (
-              <div className="mt-1 w-px flex-1 bg-gray-200" style={{ minHeight: 16 }} />
+              <div className="mt-1 w-px flex-1 bg-gray-200 dark:bg-slate-700" style={{ minHeight: 16 }} />
             )}
           </div>
           <div className="pb-4 pt-0.5">
-            <p className="text-sm font-medium text-gray-900">{ev.label}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{ev.label}</p>
             {ev.sublabel && (
-              <p className="text-xs text-gray-500">{ev.sublabel}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{ev.sublabel}</p>
             )}
-            <p className="mt-0.5 text-xs text-gray-400">{fmtDate(ev.date)}</p>
+            <p className="mt-0.5 text-xs text-gray-400 dark:text-slate-500">{fmtDate(ev.date)}</p>
           </div>
         </div>
       ))}

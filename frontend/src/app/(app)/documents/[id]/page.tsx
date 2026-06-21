@@ -167,8 +167,8 @@ export default function DocumentDetailPage() {
     <div className="p-8">
       <div className="mb-2 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{doc.title}</h1>
-          <p className="mt-0.5 text-sm text-gray-500">{doc.original_name}</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">{doc.title}</h1>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{doc.original_name}</p>
         </div>
         {statusBadge(doc.status)}
       </div>
@@ -210,8 +210,8 @@ export default function DocumentDetailPage() {
                 ['Uploaded', fmtDate(doc.created_at)],
               ].map(([k, v]) => (
                 <div key={String(k)}>
-                  <dt className="text-gray-500">{k}</dt>
-                  <dd className="font-medium text-gray-900">{v}</dd>
+                  <dt className="text-gray-500 dark:text-slate-400">{k}</dt>
+                  <dd className="font-medium text-gray-900 dark:text-slate-100">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -228,21 +228,21 @@ export default function DocumentDetailPage() {
                 {versions.map((v) => (
                   <li
                     key={v.id}
-                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 text-sm"
+                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 text-sm dark:bg-slate-700"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-slate-100">
                         Version {v.version_number}
                         {v.agent_name && (
-                          <span className="ml-2 text-xs font-normal capitalize text-gray-500">
+                          <span className="ml-2 text-xs font-normal capitalize text-gray-500 dark:text-slate-400">
                             ({v.agent_name})
                           </span>
                         )}
                       </p>
                       {v.change_summary && (
-                        <p className="truncate text-xs text-gray-500">{v.change_summary}</p>
+                        <p className="truncate text-xs text-gray-500 dark:text-slate-400">{v.change_summary}</p>
                       )}
-                      <p className="text-xs text-gray-400">{fmtDate(v.created_at)}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-500">{fmtDate(v.created_at)}</p>
                     </div>
                     {v.agent_name === 'editor' && (
                       <div className="ml-3 flex shrink-0 gap-2">
@@ -279,20 +279,20 @@ export default function DocumentDetailPage() {
                 {reviews.map((r) => (
                   <li
                     key={r.id}
-                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 text-sm"
+                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 text-sm dark:bg-slate-700"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-slate-100">
                         {r.overall_score != null ? `Score: ${r.overall_score}/10` : 'Review'}
-                        <span className="ml-2 text-xs font-normal text-gray-500">
+                        <span className="ml-2 text-xs font-normal text-gray-500 dark:text-slate-400">
                           · {r.issue_count} issue{r.issue_count !== 1 ? 's' : ''}
                         </span>
                       </p>
                       {r.summary && (
-                        <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{r.summary}</p>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-gray-500 dark:text-slate-400">{r.summary}</p>
                       )}
                     </div>
-                    <span className="ml-3 shrink-0 text-xs text-gray-400">{fmtDate(r.created_at)}</span>
+                    <span className="ml-3 shrink-0 text-xs text-gray-400 dark:text-slate-500">{fmtDate(r.created_at)}</span>
                   </li>
                 ))}
               </ul>
@@ -313,15 +313,15 @@ export default function DocumentDetailPage() {
               />
               <ul className="space-y-2">
                 {sigs.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                  <li key={s.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-slate-700">
                     <div>
-                      <p className="font-medium capitalize">{s.signature_type}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="font-medium capitalize dark:text-slate-100">{s.signature_type}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
                         Page {s.page_number} · x={s.position_data.x?.toFixed(0)}, y={s.position_data.y?.toFixed(0)}
                         {s.version_number != null && ` · v${s.version_number}`}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-400">{fmtDate(s.signed_at)}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{fmtDate(s.signed_at)}</span>
                   </li>
                 ))}
               </ul>
@@ -339,14 +339,14 @@ export default function DocumentDetailPage() {
                 <Link
                   key={href}
                   href={doc.status === 'ready' ? href : '#'}
-                  className={`block rounded-lg border border-gray-200 p-3 transition-colors ${doc.status === 'ready' ? 'hover:border-blue-300 hover:bg-blue-50' : 'cursor-not-allowed opacity-50'}`}
+                  className={`block rounded-lg border border-gray-200 p-3 transition-colors dark:border-slate-700 ${doc.status === 'ready' ? 'hover:border-blue-300 hover:bg-blue-50 dark:hover:border-blue-500 dark:hover:bg-blue-900/20' : 'cursor-not-allowed opacity-50'}`}
                 >
-                  <p className="text-sm font-medium text-gray-900">{label}</p>
-                  <p className="text-xs text-gray-500">{desc}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{label}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{desc}</p>
                 </Link>
               ))}
               {doc.status !== 'ready' && (
-                <p className="text-xs text-gray-400">Actions are available once the document is ready.</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">Actions are available once the document is ready.</p>
               )}
             </div>
           </Card>

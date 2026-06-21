@@ -105,9 +105,9 @@ export default function ChatPage() {
   return (
     <div className="flex h-full">
       {/* PDF panel */}
-      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col">
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2">
-          <span className="text-xs font-medium text-gray-500">Document preview</span>
+      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col dark:border-slate-700">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2 dark:bg-slate-800 dark:border-slate-700">
+          <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Document preview</span>
         </div>
         <div className="flex-1 overflow-hidden">
           <PdfPreview documentId={id} className="h-full" />
@@ -116,11 +116,11 @@ export default function ChatPage() {
 
       {/* Chat panel */}
       <div className="flex flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-6 py-3">
+        <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-6 py-3 dark:bg-slate-800 dark:border-slate-700">
           <Link href={`/documents/${id}`}>
             <Button variant="ghost" size="sm">←</Button>
           </Link>
-          <h1 className="flex-1 text-sm font-semibold text-gray-900">Chat with document</h1>
+          <h1 className="flex-1 text-sm font-semibold text-gray-900 dark:text-slate-100">Chat with document</h1>
           <Button
             variant="ghost"
             size="sm"
@@ -139,7 +139,7 @@ export default function ChatPage() {
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {messages.length === 0 && !initError && (
-            <div className="mt-16 text-center text-sm text-gray-400">
+            <div className="mt-16 text-center text-sm text-gray-400 dark:text-slate-500">
               Ask anything about this document.
             </div>
           )}
@@ -150,7 +150,7 @@ export default function ChatPage() {
                   className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                     m.role === 'user'
                       ? 'bg-blue-600 text-white'
-                      : 'border border-gray-200 bg-white text-gray-800'
+                      : 'border border-gray-200 bg-white text-gray-800 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100'
                   }`}
                 >
                   {m.pending ? <span className="animate-pulse">▌</span> : m.content}
@@ -167,7 +167,7 @@ export default function ChatPage() {
           </div>
         )}
 
-        <div className="border-t border-gray-200 bg-white px-6 py-4">
+        <div className="border-t border-gray-200 bg-white px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
           <div className="mx-auto flex max-w-2xl gap-3">
             <Textarea
               value={input}
@@ -191,7 +191,7 @@ export default function ChatPage() {
               Send
             </Button>
           </div>
-          <p className="mx-auto mt-1.5 max-w-2xl text-xs text-gray-400">
+          <p className="mx-auto mt-1.5 max-w-2xl text-xs text-gray-400 dark:text-slate-500">
             Enter to send · Shift+Enter for new line · Response may take up to 3 minutes on CPU
           </p>
         </div>
