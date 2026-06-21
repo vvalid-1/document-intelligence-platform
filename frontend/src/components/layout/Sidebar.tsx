@@ -29,21 +29,33 @@ export function Sidebar() {
     router.push('/login');
   }
 
+  const initial = user?.full_name?.charAt(0).toUpperCase() ?? '?';
+
   return (
-    <aside className="flex h-screen w-56 flex-col bg-slate-900 text-slate-100">
-      <div className="border-b border-slate-700 px-5 py-4">
-        <span className="text-sm font-bold tracking-wide text-white">DocIntel</span>
-        <p className="mt-0.5 text-[11px] text-slate-400">Intelligence Platform</p>
+    <aside className="flex h-screen w-60 shrink-0 flex-col bg-slate-900">
+      {/* Brand */}
+      <div className="flex items-center gap-3 border-b border-slate-800 px-5 py-5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 shadow-sm">
+          <span className="text-xs font-bold text-white">DI</span>
+        </div>
+        <div>
+          <p className="text-sm font-semibold leading-none text-white">DocIntel</p>
+          <p className="mt-1 text-[11px] text-slate-500">Intelligence Platform</p>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-0.5 px-3 py-4">
         {NAV.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${active ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+                active
+                  ? 'bg-blue-600 font-medium text-white shadow-sm'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
             >
               <span className="text-base">{icon}</span>
               {label}
@@ -52,16 +64,22 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-slate-700 px-4 py-3">
+      {/* User */}
+      <div className="border-t border-slate-800 px-4 py-4">
         {user && (
-          <div className="mb-2">
-            <p className="truncate text-xs font-medium text-white">{user.full_name}</p>
-            <p className="truncate text-[11px] text-slate-400">{user.email}</p>
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-slate-300">
+              {initial}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-white">{user.full_name}</p>
+              <p className="truncate text-[11px] text-slate-500">{user.email}</p>
+            </div>
           </div>
         )}
         <button
           onClick={handleLogout}
-          className="w-full rounded-lg px-3 py-1.5 text-left text-xs text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-300"
         >
           Sign out
         </button>

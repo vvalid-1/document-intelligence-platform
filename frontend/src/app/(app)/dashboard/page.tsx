@@ -12,6 +12,12 @@ function fmt(n: number, unit: string) {
   return `${n} ${unit}${n !== 1 ? 's' : ''}`;
 }
 
+const STATS = [
+  { key: 'total' as const, label: 'Total documents', sub: 'loaded (first 5)', icon: '⎙', iconCls: 'bg-blue-50 text-blue-600' },
+  { key: 'ready' as const, label: 'Ready', sub: 'available for AI', icon: '✓', iconCls: 'bg-emerald-50 text-emerald-600' },
+  { key: 'processing' as const, label: 'Processing', sub: 'being indexed', icon: '◌', iconCls: 'bg-amber-50 text-amber-600' },
+];
+
 export default function DashboardPage() {
   const [docs, setDocs] = useState<DocumentResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,26 +31,35 @@ export default function DashboardPage() {
 
   const ready = docs.filter((d) => d.status === 'ready').length;
   const processing = docs.filter((d) => d.status === 'processing').length;
+  const values = { total: docs.length, ready, processing };
 
   return (
     <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+      <div className="mb-7 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-0.5 text-sm text-gray-500">Welcome back</p>
+        </div>
         <Link href="/documents/upload">
           <Button>Upload document</Button>
         </Link>
       </div>
 
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        {[
-          { label: 'Total documents', value: docs.length, sub: 'loaded (first 5)' },
-          { label: 'Ready', value: ready, sub: 'available for AI' },
-          { label: 'Processing', value: processing, sub: 'being indexed' },
-        ].map(({ label, value, sub }) => (
-          <Card key={label}>
-            <p className="text-sm text-gray-500">{label}</p>
-            <p className="mt-1 text-3xl font-bold text-gray-900">{loading ? '—' : value}</p>
-            <p className="mt-1 text-xs text-gray-400">{sub}</p>
+      <div className="mb-7 grid grid-cols-3 gap-4">
+        {STATS.map(({ key, label, sub, icon, iconCls }) => (
+          <Card key={key}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-500">{label}</p>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+                  {loading ? '—' : values[key]}
+                </p>
+                <p className="mt-1 text-xs text-gray-400">{sub}</p>
+              </div>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-semibold ${iconCls}`}>
+                {icon}
+              </div>
+            </div>
           </Card>
         ))}
       </div>
@@ -68,7 +83,7 @@ export default function DashboardPage() {
           <ul className="divide-y divide-gray-100">
             {docs.map((doc) => (
               <li key={doc.id}>
-                <Link href={`/documents/${doc.id}`} className="flex items-center justify-between px-6 py-3 hover:bg-gray-50">
+                <Link href={`/documents/${doc.id}`} className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-gray-50">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-gray-900">{doc.title}</p>
                     <p className="text-xs text-gray-400">{doc.original_name}</p>

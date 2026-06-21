@@ -46,14 +46,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Document Intelligence</h1>
-          <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-900/40">
+            <span className="text-lg font-bold text-white">DI</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white">Document Intelligence</h1>
+          <p className="mt-1.5 text-sm text-slate-400">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-2xl bg-white p-8 shadow-2xl shadow-black/40"
+        >
           <Input
             label="Email"
             type="email"
@@ -73,9 +79,11 @@ export default function LoginPage() {
             autoComplete="current-password"
           />
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600">
+              {error}
+            </p>
           )}
-          <Button type="submit" className="w-full" loading={loading}>
+          <Button type="submit" className="w-full" size="lg" loading={loading}>
             Sign in
           </Button>
         </form>
