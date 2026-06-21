@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     OLLAMA_HOST: str = "http://ollama:11434"
     OLLAMA_CHAT_MODEL: str = "qwen3:8b"
     OLLAMA_EMBED_MODEL: str = "bge-m3"
+    OLLAMA_TRANSLATION_MODEL: str = "qwen2.5:3b"
     OLLAMA_NUM_CTX: int = 4096
     OLLAMA_NUM_THREAD: int = 4
     OLLAMA_NUM_PREDICT: int = 1024

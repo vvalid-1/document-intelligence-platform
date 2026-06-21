@@ -60,11 +60,18 @@ function buildTimeline(
   for (const v of versions) {
     const isEdit = v.agent_name === 'editor';
     const isSig = v.agent_name === 'signature';
+    const isTranslation = v.agent_name === 'translator';
     events.push({
-      label: isEdit ? `Edit v${v.version_number} created` : isSig ? `Signature applied (v${v.version_number})` : `Version ${v.version_number} created`,
-      sublabel: v.change_summary ?? undefined,
+      label: isEdit
+        ? `Edit v${v.version_number} created`
+        : isSig
+        ? `Signature applied (v${v.version_number})`
+        : isTranslation
+        ? (v.change_summary ?? `Translation v${v.version_number}`)
+        : `Version ${v.version_number} created`,
+      sublabel: isTranslation ? undefined : (v.change_summary ?? undefined),
       date: v.created_at,
-      icon: isEdit ? '✏️' : isSig ? '✍️' : '📋',
+      icon: isEdit ? '✏️' : isSig ? '✍️' : isTranslation ? '🌐' : '📋',
     });
   }
 
@@ -158,6 +165,7 @@ export default function DocumentDetailPage() {
     { href: `/documents/${id}/chat`, label: 'Chat', desc: 'Ask questions about this document' },
     { href: `/documents/${id}/review`, label: 'Review', desc: 'AI quality review and suggestions' },
     { href: `/documents/${id}/edit`, label: 'Edit', desc: 'Natural language editing' },
+    { href: `/documents/${id}/translate`, label: 'Translate', desc: 'Translate to English, French, or Arabic' },
     { href: `/documents/${id}/sign`, label: 'Sign', desc: 'Add electronic signature' },
   ];
 
@@ -244,7 +252,7 @@ export default function DocumentDetailPage() {
                       )}
                       <p className="text-xs text-gray-400 dark:text-slate-500">{fmtDate(v.created_at)}</p>
                     </div>
-                    {v.agent_name === 'editor' && (
+                    {(v.agent_name === 'editor' || v.agent_name === 'translator') && (
                       <div className="ml-3 flex shrink-0 gap-2">
                         <button
                           onClick={() => void handleDownloadVersion(v, 'pdf')}

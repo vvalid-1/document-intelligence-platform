@@ -70,9 +70,10 @@ class BaseAgent:
         self,
         messages: list[dict[str, str]],
         tools: list[dict] | None = None,
+        model: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
-            "model": settings.OLLAMA_CHAT_MODEL,
+            "model": model or settings.OLLAMA_CHAT_MODEL,
             "messages": messages,
             "stream": False,
             "think": False,

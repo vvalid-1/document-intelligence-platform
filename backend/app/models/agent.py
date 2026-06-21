@@ -71,7 +71,7 @@ class AgentTask(Base):
             name="chk_task_status",
         ),
         CheckConstraint(
-            "agent_name IN ('orchestrator', 'search_rag', 'reviewer', 'editor', 'signature')",
+            "agent_name IN ('orchestrator', 'search_rag', 'reviewer', 'editor', 'signature', 'translator')",
             name="chk_agent_name",
         ),
     )

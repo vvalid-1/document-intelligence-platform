@@ -63,13 +63,14 @@ def save_version_files(
     document_id: uuid.UUID,
     version_number: int,
     edited_text: str,
+    stem_suffix: str = "edited",
 ) -> tuple[str, str]:
     """
-    Write edited text as .txt and .pdf into the document's upload directory.
+    Write text as .txt and .pdf into the document's upload directory.
     Returns (txt_relative_path, pdf_relative_path).
     """
     doc_dir = make_document_dir(str(document_id))
-    stem = f"v{version_number}_edited"
+    stem = f"v{version_number}_{stem_suffix}"
 
     txt_path = doc_dir / f"{stem}.txt"
     txt_path.write_text(edited_text, encoding="utf-8")

@@ -162,6 +162,22 @@ export interface ReviewListResponse {
   total: number;
 }
 
+export type TranslationLanguage = 'en' | 'fr' | 'ar';
+
+export interface TranslationResponse {
+  id: string;
+  document_id: string;
+  version_number: number;
+  task_id: string | null;
+  target_language: TranslationLanguage;
+  language_name: string;
+  change_summary: string;
+  text_preview: string;
+  txt_path: string;
+  pdf_path: string;
+  created_at: string;
+}
+
 export interface ApiError {
   detail: string;
 }
