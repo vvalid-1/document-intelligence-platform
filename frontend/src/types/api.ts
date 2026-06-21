@@ -162,6 +162,11 @@ export interface ReviewListResponse {
   total: number;
 }
 
+export interface DocumentTextResponse {
+  text: string;
+  chunk_count: number;
+}
+
 export type TranslationLanguage = 'en' | 'fr' | 'ar';
 
 export interface TranslationResponse {

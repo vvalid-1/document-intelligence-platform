@@ -253,7 +253,13 @@ export default function DocumentDetailPage() {
                       <p className="text-xs text-gray-400 dark:text-slate-500">{fmtDate(v.created_at)}</p>
                     </div>
                     {(v.agent_name === 'editor' || v.agent_name === 'translator') && (
-                      <div className="ml-3 flex shrink-0 gap-2">
+                      <div className="ml-3 flex shrink-0 flex-wrap gap-2">
+                        <Link
+                          href={`/documents/${id}/compare?a=original&b=${v.id}`}
+                          className="text-xs text-purple-600 hover:underline dark:text-purple-400"
+                        >
+                          Compare
+                        </Link>
                         <button
                           onClick={() => void handleDownloadVersion(v, 'pdf')}
                           disabled={downloadingId !== null}

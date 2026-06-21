@@ -538,6 +538,31 @@ async def download_document(
     return FileResponse(path=str(path), filename=doc.original_name, media_type=doc.mime_type)
 
 
+# ── Original text (for comparison / diff) ────────────────────────────────────
+
+@router.get("/{document_id}/text")
+async def get_document_text(
+    document_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> dict[str, Any]:
+    doc = await _get_doc_or_404(document_id, current_user, db)
+    if doc.status != "ready":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Document is not ready (status={doc.status})",
+        )
+    rows = (
+        await db.execute(
+            select(DocumentChunk.chunk_text, DocumentChunk.chunk_index)
+            .where(DocumentChunk.document_id == document_id)
+            .order_by(DocumentChunk.chunk_index)
+        )
+    ).all()
+    full_text = "\n\n".join(r.chunk_text for r in rows)
+    return {"text": full_text, "chunk_count": len(rows)}
+
+
 # ── Versions ──────────────────────────────────────────────────────────────────
 
 @router.get("/{document_id}/versions", response_model=list[DocumentVersionResponse])
