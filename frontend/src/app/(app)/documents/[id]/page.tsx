@@ -3,11 +3,18 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getDocument } from '@/lib/api/documents';
+import { getDocument, downloadVersion, listVersions } from '@/lib/api/documents';
 import { listSignatures } from '@/lib/api/signatures';
-import type { DocumentResponse, SignatureResponse } from '@/types/api';
+import { listReviews } from '@/lib/api/reviews';
+import type {
+  DocumentResponse,
+  DocumentVersionListItem,
+  ReviewResponse,
+  SignatureResponse,
+} from '@/types/api';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ActivityTimeline, type TimelineEvent } from '@/components/ui/ActivityTimeline';
 import { statusBadge } from '@/components/ui/Badge';
 
 const POLL_INTERVAL_MS = 2000;
@@ -22,11 +29,56 @@ function fmtDate(s: string) {
   return new Date(s).toLocaleString();
 }
 
+function buildTimeline(
+  doc: DocumentResponse,
+  reviews: ReviewResponse[],
+  versions: DocumentVersionListItem[],
+  sigs: SignatureResponse[],
+): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+
+  events.push({ label: 'Document uploaded', date: doc.created_at, icon: '📄' });
+
+  if (doc.status === 'ready' || doc.status === 'error') {
+    events.push({
+      label: doc.status === 'ready' ? 'Processing complete' : 'Processing failed',
+      sublabel: doc.status === 'ready' ? `${doc.chunk_count} chunks indexed` : (doc.error_message ?? undefined),
+      date: doc.updated_at,
+      icon: doc.status === 'ready' ? '✅' : '❌',
+    });
+  }
+
+  for (const r of reviews) {
+    events.push({
+      label: 'AI review completed',
+      sublabel: r.overall_score != null ? `Score: ${r.overall_score}/10 · ${r.issue_count} issues` : `${r.issue_count} issues`,
+      date: r.created_at,
+      icon: '🔍',
+    });
+  }
+
+  for (const v of versions) {
+    const isEdit = v.agent_name === 'editor';
+    const isSig = v.agent_name === 'signature';
+    events.push({
+      label: isEdit ? `Edit v${v.version_number} created` : isSig ? `Signature applied (v${v.version_number})` : `Version ${v.version_number} created`,
+      sublabel: v.change_summary ?? undefined,
+      date: v.created_at,
+      icon: isEdit ? '✏️' : isSig ? '✍️' : '📋',
+    });
+  }
+
+  return events;
+}
+
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [doc, setDoc] = useState<DocumentResponse | null>(null);
   const [sigs, setSigs] = useState<SignatureResponse[]>([]);
+  const [versions, setVersions] = useState<DocumentVersionListItem[]>([]);
+  const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPoll() {
@@ -41,10 +93,17 @@ export default function DocumentDetailPage() {
 
     async function init() {
       try {
-        const [d, s] = await Promise.all([getDocument(id), listSignatures(id)]);
+        const [d, s, v, r] = await Promise.all([
+          getDocument(id),
+          listSignatures(id),
+          listVersions(id),
+          listReviews(id),
+        ]);
         if (cancelled) return;
         setDoc(d);
         setSigs(s.items);
+        setVersions(v);
+        setReviews(r.items);
 
         if (d.status === 'processing') {
           pollRef.current = setInterval(async () => {
@@ -54,7 +113,7 @@ export default function DocumentDetailPage() {
               setDoc(updated);
               if (updated.status !== 'processing') stopPoll();
             } catch {
-              // ignore transient errors, keep polling
+              // ignore transient errors
             }
           }, POLL_INTERVAL_MS);
         }
@@ -71,6 +130,17 @@ export default function DocumentDetailPage() {
       stopPoll();
     };
   }, [id]);
+
+  async function handleDownloadVersion(v: DocumentVersionListItem, fmt: 'pdf' | 'txt') {
+    setDownloadingId(`${v.id}-${fmt}`);
+    try {
+      await downloadVersion(id, v.id, fmt, `v${v.version_number}_doc.${fmt}`);
+    } catch {
+      // ignore — download errors are non-critical
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -90,6 +160,8 @@ export default function DocumentDetailPage() {
     { href: `/documents/${id}/edit`, label: 'Edit', desc: 'Natural language editing' },
     { href: `/documents/${id}/sign`, label: 'Sign', desc: 'Add electronic signature' },
   ];
+
+  const timeline = buildTimeline(doc, reviews, versions, sigs);
 
   return (
     <div className="p-8">
@@ -122,7 +194,10 @@ export default function DocumentDetailPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left column */}
         <div className="space-y-4 lg:col-span-2">
+
+          {/* Document info */}
           <Card>
             <CardHeader title="Document info" />
             <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -142,6 +217,94 @@ export default function DocumentDetailPage() {
             </dl>
           </Card>
 
+          {/* Versions */}
+          {versions.length > 0 && (
+            <Card>
+              <CardHeader
+                title="Versions"
+                subtitle={`${versions.length} version${versions.length !== 1 ? 's' : ''}`}
+              />
+              <ul className="space-y-2">
+                {versions.map((v) => (
+                  <li
+                    key={v.id}
+                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 text-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900">
+                        Version {v.version_number}
+                        {v.agent_name && (
+                          <span className="ml-2 text-xs font-normal capitalize text-gray-500">
+                            ({v.agent_name})
+                          </span>
+                        )}
+                      </p>
+                      {v.change_summary && (
+                        <p className="truncate text-xs text-gray-500">{v.change_summary}</p>
+                      )}
+                      <p className="text-xs text-gray-400">{fmtDate(v.created_at)}</p>
+                    </div>
+                    {v.agent_name === 'editor' && (
+                      <div className="ml-3 flex shrink-0 gap-2">
+                        <button
+                          onClick={() => void handleDownloadVersion(v, 'pdf')}
+                          disabled={downloadingId !== null}
+                          className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                        >
+                          {downloadingId === `${v.id}-pdf` ? '…' : 'PDF'}
+                        </button>
+                        <button
+                          onClick={() => void handleDownloadVersion(v, 'txt')}
+                          disabled={downloadingId !== null}
+                          className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                        >
+                          {downloadingId === `${v.id}-txt` ? '…' : 'TXT'}
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* Past Reviews */}
+          {reviews.length > 0 && (
+            <Card>
+              <CardHeader
+                title="Reviews"
+                subtitle={`${reviews.length} review${reviews.length !== 1 ? 's' : ''}`}
+              />
+              <ul className="space-y-2">
+                {reviews.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5 text-sm"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {r.overall_score != null ? `Score: ${r.overall_score}/10` : 'Review'}
+                        <span className="ml-2 text-xs font-normal text-gray-500">
+                          · {r.issue_count} issue{r.issue_count !== 1 ? 's' : ''}
+                        </span>
+                      </p>
+                      {r.summary && (
+                        <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{r.summary}</p>
+                      )}
+                    </div>
+                    <span className="ml-3 shrink-0 text-xs text-gray-400">{fmtDate(r.created_at)}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3">
+                <Link href={`/documents/${id}/review`}>
+                  <Button variant="secondary" size="sm">Run new review</Button>
+                </Link>
+              </div>
+            </Card>
+          )}
+
+          {/* Signatures */}
           {sigs.length > 0 && (
             <Card>
               <CardHeader
@@ -166,7 +329,9 @@ export default function DocumentDetailPage() {
           )}
         </div>
 
-        <div>
+        {/* Right column */}
+        <div className="space-y-4">
+          {/* AI Actions */}
           <Card>
             <CardHeader title="AI actions" />
             <div className="space-y-2">
@@ -185,6 +350,14 @@ export default function DocumentDetailPage() {
               )}
             </div>
           </Card>
+
+          {/* Activity Timeline */}
+          {timeline.length > 0 && (
+            <Card>
+              <CardHeader title="Activity" />
+              <ActivityTimeline events={timeline} />
+            </Card>
+          )}
         </div>
       </div>
     </div>

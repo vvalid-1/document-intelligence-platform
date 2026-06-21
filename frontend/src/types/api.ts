@@ -137,6 +137,23 @@ export interface SignatureListResponse {
   total: number;
 }
 
+export interface DocumentVersionListItem {
+  id: string;
+  document_id: string;
+  version_number: number;
+  created_by: string;
+  file_path: string;
+  change_summary: string | null;
+  agent_name: string | null;
+  task_id: string | null;
+  created_at: string;
+}
+
+export interface ReviewListResponse {
+  items: ReviewResponse[];
+  total: number;
+}
+
 export interface ApiError {
   detail: string;
 }

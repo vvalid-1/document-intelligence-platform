@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { editDocument } from '@/lib/api/edits';
 import { downloadVersion } from '@/lib/api/documents';
 import type { EditResponse } from '@/types/api';
+import { PdfPreview } from '@/components/ui/PdfPreview';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -53,94 +54,107 @@ export default function EditPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center gap-3">
-        <Link href={`/documents/${id}`}>
-          <Button variant="ghost" size="sm">←</Button>
-        </Link>
-        <h1 className="text-xl font-bold text-gray-900">Edit document</h1>
+    <div className="flex h-full">
+      {/* PDF panel */}
+      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col">
+        <div className="border-b border-gray-200 bg-white px-4 py-2">
+          <span className="text-xs font-medium text-gray-500">Document preview</span>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <PdfPreview documentId={id} className="h-full" />
+        </div>
       </div>
 
-      <div className="mx-auto max-w-2xl space-y-6">
-        <Card>
-          <CardHeader
-            title="Edit instruction"
-            subtitle="Describe what changes you want the AI to make"
-          />
-          <div className="space-y-4">
-            <Textarea
-              value={instruction}
-              onChange={(e) => setInstruction(e.target.value)}
-              placeholder="e.g. Fix grammar errors and improve clarity"
-              rows={4}
-              maxLength={2000}
-            />
-            <div className="flex flex-wrap gap-2">
-              {EXAMPLES.map((ex) => (
-                <button
-                  key={ex}
-                  onClick={() => setInstruction(ex)}
-                  className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  {ex}
-                </button>
-              ))}
-            </div>
-            {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
-            )}
-            <Button
-              className="w-full"
-              loading={loading}
-              disabled={!instruction.trim()}
-              onClick={() => void handleEdit()}
-            >
-              Apply edit
-            </Button>
-            {loading && (
-              <p className="text-center text-xs text-gray-400">
-                AI is rewriting your document — this may take 30–120 seconds…
-              </p>
-            )}
-          </div>
-        </Card>
+      {/* Edit panel */}
+      <div className="flex-1 overflow-y-auto p-8">
+        <div className="mb-6 flex items-center gap-3">
+          <Link href={`/documents/${id}`}>
+            <Button variant="ghost" size="sm">←</Button>
+          </Link>
+          <h1 className="text-xl font-bold text-gray-900">Edit document</h1>
+        </div>
 
-        {result && (
+        <div className="mx-auto max-w-2xl space-y-6">
           <Card>
             <CardHeader
-              title={`Version ${result.version_number} created`}
-              subtitle={result.change_summary}
+              title="Edit instruction"
+              subtitle="Describe what changes you want the AI to make"
             />
-            <div className="rounded-lg bg-gray-50 p-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-                Preview (first 500 chars)
-              </p>
-              <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
-                {result.text_preview}
-              </p>
-            </div>
-            <div className="mt-4 flex gap-3">
+            <div className="space-y-4">
+              <Textarea
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder="e.g. Fix grammar errors and improve clarity"
+                rows={4}
+                maxLength={2000}
+              />
+              <div className="flex flex-wrap gap-2">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    onClick={() => setInstruction(ex)}
+                    className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+              {error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+              )}
               <Button
-                variant="secondary"
-                size="sm"
-                loading={downloadingFmt === 'pdf'}
-                disabled={downloadingFmt !== null}
-                onClick={() => void handleDownload('pdf')}
+                className="w-full"
+                loading={loading}
+                disabled={!instruction.trim()}
+                onClick={() => void handleEdit()}
               >
-                Download PDF
+                Apply edit
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={downloadingFmt === 'txt'}
-                disabled={downloadingFmt !== null}
-                onClick={() => void handleDownload('txt')}
-              >
-                Download TXT
-              </Button>
+              {loading && (
+                <p className="text-center text-xs text-gray-400">
+                  AI is rewriting your document — this may take 30–120 seconds…
+                </p>
+              )}
             </div>
           </Card>
-        )}
+
+          {result && (
+            <Card>
+              <CardHeader
+                title={`Version ${result.version_number} created`}
+                subtitle={result.change_summary}
+              />
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Preview (first 500 chars)
+                </p>
+                <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
+                  {result.text_preview}
+                </p>
+              </div>
+              <div className="mt-4 flex gap-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={downloadingFmt === 'pdf'}
+                  disabled={downloadingFmt !== null}
+                  onClick={() => void handleDownload('pdf')}
+                >
+                  Download PDF
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={downloadingFmt === 'txt'}
+                  disabled={downloadingFmt !== null}
+                  onClick={() => void handleDownload('txt')}
+                >
+                  Download TXT
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
