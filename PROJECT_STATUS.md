@@ -1,6 +1,6 @@
 # Project Status — Document Intelligence Platform
 
-## Current Version: V1.8
+## Current Version: V1.9
 
 **Stack:** FastAPI · Next.js 14 · PostgreSQL · ChromaDB · Ollama (qwen3:8b / qwen2.5:3b / bge-m3) · Docker Compose
 **Deployment:** CPU-only · No paid APIs · Fully local
@@ -13,19 +13,19 @@
 |---|---|
 | Branch | `master` |
 | Remote | `https://github.com/vvalid-1/document-intelligence-platform` |
-| HEAD | `8c2f426` |
+| HEAD | `2574a42` |
 
 ### Recent Commits (newest first)
 
 | Hash | Message |
 |---|---|
+| `2574a42` | feat(v1.9): Folders / Collections for document organisation |
 | `8c2f426` | feat(v1.8): Favorites, Trash Bin, Bulk Actions, Dashboard stats |
 | `2ef0f2d` | feat(v1.7): Archive & Restore Documents |
 | `5c09c80` | docs: add PROJECT_STATUS.md with V1.6 completion status |
 | `414a81e` | feat(v1.6): Global Search across all documents |
 | `22d43cc` | feat(v1.5): OCR support for scanned PDFs and images (JPG/JPEG/PNG) |
 | `2e8c819` | feat(v1.4): Version Comparison and Diff Viewer |
-| `d24e8e8` | feat(v1.3): Translation Agent — EN/FR/AR document translation |
 
 ---
 
@@ -104,7 +104,7 @@
 - Migration `0004`: `is_archived`, `archived_at` columns + index
 - 8 backend tests
 
-### V1.8 — Document Management Experience (shipped — current)
+### V1.8 — Document Management Experience (shipped)
 
 #### Favorites / Starred Documents
 - `POST /documents/{id}/favorite` — stars a document (409 if already starred)
@@ -142,6 +142,45 @@
 - `vector_service.get_document_collection` and `delete_document_chunks` imported at module level in `documents.py` (enables `patch("app.api.v1.documents.get_document_collection", …)` in tests)
 - 19 new backend tests (test_favorites: 6, test_trash: 7, test_bulk: 6) — all passing
 
+### V1.9 — Folders / Collections (shipped — current)
+
+#### Folder Management
+- `GET /api/v1/folders` — list user's folders with `doc_count` (admin sees all)
+- `POST /api/v1/folders` — create folder (409 if duplicate name per user)
+- `PATCH /api/v1/folders/{id}` — rename folder (409 on conflict)
+- `DELETE /api/v1/folders/{id}` — delete folder; `ON DELETE SET NULL` automatically unassigns documents
+- `GET /api/v1/folders/{id}/documents` — paginated documents inside a folder
+
+#### Assign Documents to Folders
+- `POST /documents/{id}/move` — move single document to folder (`folder_id: UUID | null` to remove)
+- `POST /documents/bulk/move` — bulk move up to 50 documents (`folder_id: null` removes from folder)
+- `GET /documents?folder_id={id}` — filter document list by folder
+
+#### Search Integration
+- `POST /search` accepts optional `folder_id` — restricts vector results to that folder's documents
+
+#### Dashboard
+- `GET /documents/stats` returns `folders` count
+- Dashboard shows 8 stat cards (added Folders 📁, links to `/folders`)
+
+#### Frontend Pages
+- `/folders` — folder grid: create, rename, delete, doc count per folder
+- `/folders/[id]` — documents inside a folder with "Remove from folder" action
+- Documents page: folder filter dropdown, folder badge per row, per-row move-to-folder select, bulk move in bulk bar
+- Document detail: folder badge + move-to-folder select in Document Info
+- Search page: optional folder filter dropdown
+- Sidebar: Folders (📁) nav item
+
+#### Infrastructure
+- Alembic migration `0006`: `folders` table + `folder_id` on `documents` (FK with `ON DELETE SET NULL`)
+- Unique constraint: `(owner_id, name)` prevents duplicate folder names per user
+- `backend/app/models/folder.py` — SQLAlchemy 2.0 async model
+- `backend/app/schemas/folder.py` — Pydantic v2 schemas (`FolderCreateRequest`, `FolderRenameRequest`, `FolderResponse`, `FolderListResponse`)
+- `frontend/src/lib/api/folders.ts` — API client (`listFolders`, `createFolder`, `renameFolder`, `deleteFolder`, `listFolderDocuments`)
+- `apiPatch` helper added to `frontend/src/lib/api/client.ts`
+- 8 new backend tests (`test_folders.py`) — all passing; full suite **219/219 passing**
+- Frontend build: clean (`✓ Ready in 313ms`, no TypeScript errors)
+
 ---
 
 ## API Surface (v1)
@@ -151,13 +190,14 @@
 | POST | `/api/v1/auth/register` | First user → admin |
 | POST | `/api/v1/auth/login` | Returns JWT |
 | POST | `/api/v1/auth/sse-token` | Short-lived SSE ticket |
-| GET | `/api/v1/documents` | List documents (`archived`, `favorite`, `trashed` filters) |
+| GET | `/api/v1/documents` | List documents (`archived`, `favorite`, `trashed`, `folder_id` filters) |
 | POST | `/api/v1/documents` | Upload document (202) |
-| GET | `/api/v1/documents/stats` | Dashboard counts (total, ready, reviews, edits, signatures, favorites, trash) |
+| GET | `/api/v1/documents/stats` | Dashboard counts (total, ready, reviews, edits, signatures, favorites, trash, folders) |
 | POST | `/api/v1/documents/bulk/archive` | Bulk archive (≤50 docs) |
 | POST | `/api/v1/documents/bulk/restore` | Bulk restore archived |
 | POST | `/api/v1/documents/bulk/trash` | Bulk move to trash |
 | POST | `/api/v1/documents/bulk/favorite` | Bulk star/unstar |
+| POST | `/api/v1/documents/bulk/move` | Bulk move to folder |
 | GET | `/api/v1/documents/{id}` | Document detail |
 | PATCH | `/api/v1/documents/{id}` | Rename |
 | DELETE | `/api/v1/documents/{id}` | Move to trash |
@@ -167,6 +207,7 @@
 | POST | `/api/v1/documents/{id}/favorite` | Star |
 | POST | `/api/v1/documents/{id}/unfavorite` | Unstar |
 | POST | `/api/v1/documents/{id}/untrash` | Restore from trash |
+| POST | `/api/v1/documents/{id}/move` | Move to folder (`folder_id: null` removes) |
 | GET | `/api/v1/documents/{id}/text` | Full extracted text |
 | GET | `/api/v1/documents/{id}/status` | Processing status |
 | GET | `/api/v1/documents/{id}/status/stream` | SSE processing stream |
@@ -178,7 +219,12 @@
 | POST | `/api/v1/documents/{id}/translate` | Translate (EN/FR/AR) |
 | POST | `/api/v1/documents/{id}/sign` | Add signature |
 | GET | `/api/v1/documents/{id}/signatures` | List signatures |
-| POST | `/api/v1/search` | Global cross-document search |
+| GET | `/api/v1/folders` | List folders with doc counts |
+| POST | `/api/v1/folders` | Create folder |
+| PATCH | `/api/v1/folders/{id}` | Rename folder |
+| DELETE | `/api/v1/folders/{id}` | Delete folder (204) |
+| GET | `/api/v1/folders/{id}/documents` | Documents inside folder |
+| POST | `/api/v1/search` | Global search (`folder_id` filter optional) |
 | GET | `/api/v1/admin/users` | List all users |
 | PATCH | `/api/v1/admin/users/{id}` | Update role/status |
 | DELETE | `/api/v1/admin/users/{id}` | Hard delete user |
@@ -190,17 +236,19 @@
 | Route | Purpose |
 |---|---|
 | `/login` | Auth |
-| `/dashboard` | Stats overview (7 clickable stat cards) |
-| `/documents` | Document library (checkboxes, bulk bar, star toggle, Starred tab) |
+| `/dashboard` | Stats overview (8 clickable stat cards) |
+| `/documents` | Document library (checkboxes, bulk bar, star toggle, folder filter + badge + move, Starred tab) |
 | `/documents/upload` | Upload (PDF/DOCX/TXT/JPG/PNG) |
-| `/documents/[id]` | Document detail, versions, actions, star + archive buttons |
+| `/documents/[id]` | Document detail, versions, actions, star + archive + folder move |
 | `/documents/[id]/chat` | RAG chat |
 | `/documents/[id]/review` | AI review |
 | `/documents/[id]/edit` | Natural language edit |
 | `/documents/[id]/translate` | Translation (EN/FR/AR) |
 | `/documents/[id]/sign` | Signature |
 | `/documents/[id]/compare` | Diff viewer |
-| `/search` | Global search |
+| `/search` | Global search (optional folder filter) |
+| `/folders` | Folder grid (create, rename, delete, doc count) |
+| `/folders/[id]` | Documents inside a folder |
 | `/archived` | Archived documents library |
 | `/favorites` | Starred documents library |
 | `/trash` | Trash bin (Restore + Delete forever) |
@@ -224,8 +272,9 @@
 | `test_favorites.py` | star/unstar, 409 guard, filter, stats, 6 tests | |
 | `test_trash.py` | trash/untrash, permanent delete, stats, 404 path, 7 tests | |
 | `test_bulk.py` | bulk archive/restore/trash/favorite, empty body guard, 6 tests | |
+| `test_folders.py` | create, duplicate 409, list with count, rename, delete unassigns, move, filter, bulk move, 8 tests | |
 
-**V1.8 new tests: 19/19 passing. Frontend build: clean (no TypeScript errors).**
+**Full suite: 219/219 passing. Frontend build: clean (no TypeScript errors).**
 
 ---
 
@@ -249,7 +298,7 @@
 
 | ID | Feature | Notes |
 |---|---|---|
-| V1.9 | Report Generator | Auto-generate structured PDF report from one or more documents |
+| V2.0 | Report Generator | Auto-generate structured PDF report from one or more documents |
 | — | Rate limiting on `/search` | Add slowapi limiter (e.g. 20 req/min per user) to `POST /api/v1/search` |
 | — | Search pagination | Add `offset` / `page` to `SearchRequest` and `SearchResponse` |
 | — | Viewer role UI | Currently no viewer-specific UI restrictions |
@@ -259,26 +308,32 @@
 
 ---
 
-## V1.8 Status: COMPLETE
+## V1.9 Status: COMPLETE
 
-All deliverables shipped and committed (`8c2f426`):
+All deliverables shipped and committed (`2574a42`):
 
-- [x] Migration `0005` — `is_favorite` column + index
-- [x] `POST /documents/{id}/favorite` and `/unfavorite`
-- [x] `POST /documents/{id}/untrash`
-- [x] `DELETE /documents/{id}/permanent` (admin only)
-- [x] `DELETE /documents/{id}` changed to move-to-trash (no ChromaDB deletion)
-- [x] `GET /documents?favorite=true` and `?trashed=true`
-- [x] `GET /documents/stats` returns `favorites` + `trash` counts
-- [x] `POST /documents/bulk/archive|restore|trash|favorite`
-- [x] `backend/tests/api/test_favorites.py` — 6/6 passing
-- [x] `backend/tests/api/test_trash.py` — 7/7 passing
-- [x] `backend/tests/api/test_bulk.py` — 6/6 passing
-- [x] `/favorites` page — Starred Documents library
-- [x] `/trash` page — Trash Bin with Restore + Delete forever
-- [x] `/documents` page — checkboxes, bulk bar, star toggle, Starred tab
-- [x] `/documents/[id]` — star toggle button in header
-- [x] `/dashboard` — 7 stat cards, all clickable
-- [x] Sidebar — Favorites (★) and Trash (🗑) nav items
-- [x] Frontend Docker build: `✓ Ready in 109ms` (no TypeScript errors)
+- [x] Alembic migration `0006` — `folders` table + `folder_id` on `documents` (ON DELETE SET NULL)
+- [x] `backend/app/models/folder.py` — Folder ORM model
+- [x] `backend/app/schemas/folder.py` — Pydantic v2 schemas
+- [x] `backend/app/api/v1/folders.py` — full CRUD router (list, create, rename, delete, list-docs)
+- [x] `backend/app/api/router.py` — `folders.router` registered
+- [x] `POST /documents/{id}/move` and `POST /documents/bulk/move` endpoints
+- [x] `GET /documents?folder_id=` filter
+- [x] `POST /search` `folder_id` filter
+- [x] `GET /documents/stats` returns `folders` count
+- [x] `backend/tests/api/test_folders.py` — 8/8 passing
+- [x] Full backend suite — 219/219 passing
+- [x] `frontend/src/types/api.ts` — `FolderResponse`, `FolderListResponse`, `folder_id` on `DocumentResponse`, `folders` on stats
+- [x] `frontend/src/lib/api/folders.ts` — folder API client
+- [x] `frontend/src/lib/api/client.ts` — `apiPatch` added
+- [x] `frontend/src/lib/api/documents.ts` — `moveDocument`, `bulkMove`, `folder_id` filter
+- [x] `frontend/src/lib/api/search.ts` — `folderId` param
+- [x] `/folders` page — folder grid with create, rename, delete, doc count
+- [x] `/folders/[id]` page — documents inside folder with Remove action
+- [x] `/documents` page — folder filter dropdown, folder badge, move select, bulk move
+- [x] `/documents/[id]` page — folder badge + move select in Document Info
+- [x] `/search` page — optional folder filter dropdown
+- [x] `/dashboard` — 8 stat cards (added Folders 📁)
+- [x] Sidebar — Folders (📁) nav item
+- [x] Frontend Docker rebuild: `✓ Ready in 313ms` (no TypeScript errors)
 - [x] Pushed to `origin/master`
