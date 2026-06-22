@@ -1,7 +1,7 @@
 import type { DocumentListResponse, DocumentResponse, DocumentStatsResponse, DocumentVersionListItem } from '@/types/api';
 import { apiDelete, apiGet, apiPost, apiRequest, getToken } from './client';
 
-type ListDocumentsOpts = { archived?: boolean; favorite?: boolean; trashed?: boolean };
+type ListDocumentsOpts = { archived?: boolean; favorite?: boolean; trashed?: boolean; folder_id?: string };
 
 export function listDocuments(page = 1, pageSize = 20, opts: ListDocumentsOpts = {}): Promise<DocumentListResponse> {
   const base = `/documents?page=${page}&page_size=${pageSize}`;
@@ -9,6 +9,7 @@ export function listDocuments(page = 1, pageSize = 20, opts: ListDocumentsOpts =
   if (opts.archived) params.push('archived=true');
   if (opts.favorite) params.push('favorite=true');
   if (opts.trashed) params.push('trashed=true');
+  if (opts.folder_id) params.push(`folder_id=${opts.folder_id}`);
   return apiGet<DocumentListResponse>(params.length ? `${base}&${params.join('&')}` : base);
 }
 
@@ -65,6 +66,14 @@ export function bulkTrash(ids: string[]): Promise<void> {
 
 export function bulkFavorite(ids: string[], value: boolean): Promise<void> {
   return apiPost<void>('/documents/bulk/favorite', { ids, value });
+}
+
+export function bulkMove(ids: string[], folderId: string | null): Promise<void> {
+  return apiPost<void>('/documents/bulk/move', { ids, folder_id: folderId });
+}
+
+export function moveDocument(id: string, folderId: string | null): Promise<DocumentResponse> {
+  return apiPost<DocumentResponse>(`/documents/${id}/move`, { folder_id: folderId });
 }
 
 export function getDocumentStats(): Promise<DocumentStatsResponse> {

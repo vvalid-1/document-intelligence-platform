@@ -63,6 +63,13 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
+  return apiRequest<T>(path, {
+    method: 'PATCH',
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
 export async function apiDelete<T>(path: string): Promise<T> {
   return apiRequest<T>(path, { method: 'DELETE' });
 }

@@ -20,15 +20,18 @@ from app.core.deps import get_current_user, require_admin, require_editor_or_adm
 from app.services.vector_service import delete_document_chunks, get_document_collection
 from app.models.document import Document, DocumentChunk, DocumentReview, DocumentVersion
 from app.models.user import User
+from app.models.folder import Folder
 from app.schemas.document import (
     BulkActionRequest,
     BulkFavoriteRequest,
+    BulkMoveRequest,
     DocumentListResponse,
     DocumentPatchRequest,
     DocumentResponse,
     DocumentStatusResponse,
     DocumentUploadResponse,
     DocumentVersionResponse,
+    MoveRequest,
 )
 from app.services.audit_service import log_action
 from app.utils.file_utils import make_document_dir, resolve_upload_path, validate_upload
@@ -395,6 +398,7 @@ async def list_documents(
     archived: bool = False,
     favorite: bool = False,
     trashed: bool = False,
+    folder_id: uuid.UUID | None = None,
 ) -> DocumentListResponse:
     if page < 1:
         page = 1
@@ -410,6 +414,8 @@ async def list_documents(
         )
         if favorite:
             base_q = base_q.where(Document.is_favorite.is_(True))
+        if folder_id is not None:
+            base_q = base_q.where(Document.folder_id == folder_id)
 
     if current_user.role == "viewer":
         base_q = base_q.where(Document.owner_id == current_user.id)
@@ -475,6 +481,11 @@ async def get_document_stats(
         select(func.count(Document.id)).where(Document.is_deleted.is_(True), *viewer_filter)
     )
 
+    folder_q = select(func.count(Folder.id))
+    if current_user.role != "admin":
+        folder_q = folder_q.where(Folder.owner_id == current_user.id)
+    folders_count = await _count(folder_q)
+
     return {
         "total": total,
         "ready": ready,
@@ -483,6 +494,7 @@ async def get_document_stats(
         "signatures": signatures,
         "favorites": favorites,
         "trash": trash,
+        "folders": folders_count,
     }
 
 
@@ -586,6 +598,35 @@ async def bulk_favorite_documents(
         action="document.bulk_favorite",
         user_id=current_user.id,
         details={"count": len(body.ids), "value": body.value},
+        request=request,
+    )
+    return Response(status_code=204)
+
+
+@router.post("/bulk/move", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def bulk_move_documents(
+    body: BulkMoveRequest,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> Response:
+    if body.folder_id is not None:
+        folder = await db.execute(select(Folder).where(Folder.id == body.folder_id))
+        if folder.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found")
+
+    q = update(Document).where(
+        Document.id.in_(body.ids),
+        Document.is_deleted.is_(False),
+    )
+    if current_user.role == "viewer":
+        q = q.where(Document.owner_id == current_user.id)
+    await db.execute(q.values(folder_id=body.folder_id))
+    await log_action(
+        db,
+        action="document.bulk_move",
+        user_id=current_user.id,
+        details={"count": len(body.ids), "folder_id": str(body.folder_id) if body.folder_id else None},
         request=request,
     )
     return Response(status_code=204)
@@ -757,6 +798,37 @@ async def unfavorite_document(
         user_id=current_user.id,
         resource_type="document",
         resource_id=doc.id,
+        request=request,
+    )
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+# ── Move to folder ───────────────────────────────────────────────────────────
+
+@router.post("/{document_id}/move", response_model=DocumentResponse)
+async def move_document(
+    document_id: uuid.UUID,
+    body: MoveRequest,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> DocumentResponse:
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    if body.folder_id is not None:
+        folder_res = await db.execute(select(Folder).where(Folder.id == body.folder_id))
+        if folder_res.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Folder not found")
+
+    doc.folder_id = body.folder_id
+    await log_action(
+        db,
+        action="document.move",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=doc.id,
+        details={"folder_id": str(body.folder_id) if body.folder_id else None},
         request=request,
     )
     await db.refresh(doc)

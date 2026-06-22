@@ -51,6 +51,9 @@ class Document(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
@@ -58,6 +61,7 @@ class Document(Base):
     versions: Mapped[list[DocumentVersion]] = relationship(back_populates="document", cascade="all, delete-orphan")
     reviews: Mapped[list[DocumentReview]] = relationship(back_populates="document", cascade="all, delete-orphan")
     signatures: Mapped[list[Signature]] = relationship(back_populates="document", cascade="all, delete-orphan")
+    folder: Mapped[object | None] = relationship("Folder", back_populates="documents")
 
 
 class DocumentChunk(Base):

@@ -98,6 +98,8 @@ async def global_search(
     )
     if current_user.role == "viewer":
         doc_q = doc_q.where(Document.owner_id == current_user.id)
+    if body.folder_id is not None:
+        doc_q = doc_q.where(Document.folder_id == body.folder_id)
 
     doc_rows = (await db.execute(doc_q)).all()
     allowed_ids: dict[str, str] = {str(row.id): row.title for row in doc_rows}

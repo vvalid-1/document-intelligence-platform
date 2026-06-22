@@ -6,13 +6,16 @@ import {
   archiveDocument,
   bulkArchive,
   bulkFavorite,
+  bulkMove,
   bulkTrash,
   deleteDocument,
   favoriteDocument,
   listDocuments,
+  moveDocument,
   unfavoriteDocument,
 } from '@/lib/api/documents';
-import type { DocumentResponse } from '@/types/api';
+import { listFolders } from '@/lib/api/folders';
+import type { DocumentResponse, FolderResponse } from '@/types/api';
 import { Button } from '@/components/ui/Button';
 import { statusBadge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -32,9 +35,12 @@ export default function DocumentsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [folders, setFolders] = useState<FolderResponse[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [starringId, setStarringId] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [tab, setTab] = useState<FilterTab>('all');
@@ -50,7 +56,11 @@ export default function DocumentsPage() {
   async function load(p: number, silent = false) {
     if (!silent) setLoading(true);
     try {
-      const r = await listDocuments(p, 20, { favorite: tab === 'favorites' });
+      const opts: Parameters<typeof listDocuments>[2] = {
+        favorite: tab === 'favorites',
+      };
+      if (selectedFolder) opts.folder_id = selectedFolder;
+      const r = await listDocuments(p, 20, opts);
       setDocs(r.items);
       setTotal(r.total);
       setSelected(new Set());
@@ -64,10 +74,14 @@ export default function DocumentsPage() {
   }
 
   useEffect(() => {
+    void listFolders().then((r) => setFolders(r.items)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     void load(page);
     return () => stopPoll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, tab]);
+  }, [page, tab, selectedFolder]);
 
   useEffect(() => {
     stopPoll();
@@ -140,6 +154,18 @@ export default function DocumentsPage() {
     }
   }
 
+  async function handleMove(docId: string, folderId: string | null) {
+    setMovingId(docId);
+    try {
+      await moveDocument(docId, folderId);
+      await load(page, true);
+    } catch {
+      // ignore
+    } finally {
+      setMovingId(null);
+    }
+  }
+
   async function handleBulkArchive() {
     if (selected.size === 0) return;
     setBulkLoading(true);
@@ -180,8 +206,22 @@ export default function DocumentsPage() {
     }
   }
 
+  async function handleBulkMove(folderId: string | null) {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    try {
+      await bulkMove(Array.from(selected), folderId);
+      await load(page, true);
+    } catch {
+      // ignore
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / 20));
   const allSelected = docs.length > 0 && selected.size === docs.length;
+  const folderMap = Object.fromEntries(folders.map((f) => [f.id, f.name]));
 
   return (
     <div className="p-8">
@@ -195,26 +235,41 @@ export default function DocumentsPage() {
         </Link>
       </div>
 
-      {/* Filter tabs */}
-      <div className="mb-4 flex gap-1 border-b border-gray-200 dark:border-slate-700">
-        {(['all', 'favorites'] as FilterTab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => { setTab(t); setPage(1); }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
+      {/* Filter row: tabs + folder dropdown */}
+      <div className="mb-4 flex items-center justify-between gap-4 border-b border-gray-200 pb-2 dark:border-slate-700">
+        <div className="flex gap-1">
+          {(['all', 'favorites'] as FilterTab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setPage(1); }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                tab === t
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              {t === 'all' ? 'All' : '★ Starred'}
+            </button>
+          ))}
+        </div>
+
+        {folders.length > 0 && (
+          <select
+            value={selectedFolder}
+            onChange={(e) => { setSelectedFolder(e.target.value); setPage(1); }}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           >
-            {t === 'all' ? 'All' : '★ Starred'}
-          </button>
-        ))}
+            <option value="">All folders</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 dark:border-blue-800 dark:bg-blue-900/20">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 dark:border-blue-800 dark:bg-blue-900/20">
           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
             {selected.size} selected
           </span>
@@ -227,6 +282,19 @@ export default function DocumentsPage() {
           <Button variant="secondary" size="sm" loading={bulkLoading} onClick={() => void handleBulkStar(false)}>
             Unstar
           </Button>
+          {folders.length > 0 && (
+            <select
+              onChange={(e) => { void handleBulkMove(e.target.value || null); e.target.value = ''; }}
+              defaultValue=""
+              className="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="" disabled>Move to folder…</option>
+              <option value="">Remove from folder</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          )}
           <Button variant="danger" size="sm" loading={bulkLoading} onClick={() => void handleBulkTrash()}>
             Trash
           </Button>
@@ -249,7 +317,7 @@ export default function DocumentsPage() {
             <p className="text-gray-500">
               {tab === 'favorites' ? 'No starred documents.' : 'No documents found.'}
             </p>
-            {tab === 'all' && (
+            {tab === 'all' && !selectedFolder && (
               <Link href="/documents/upload" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
                 Upload your first document →
               </Link>
@@ -260,12 +328,7 @@ export default function DocumentsPage() {
             <thead className="border-b border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-3 text-left w-10">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    className="cursor-pointer rounded"
-                  />
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} className="cursor-pointer rounded" />
                 </th>
                 <th className="px-4 py-3 text-left w-8"></th>
                 <th className="px-4 py-3 text-left">Document</th>
@@ -307,7 +370,17 @@ export default function DocumentsPage() {
                     <Link href={`/documents/${doc.id}`} className="font-medium text-gray-900 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400">
                       {doc.title}
                     </Link>
-                    <p className="text-xs text-gray-400 dark:text-slate-500">{doc.original_name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-gray-400 dark:text-slate-500">{doc.original_name}</p>
+                      {doc.folder_id && folderMap[doc.folder_id] && (
+                        <Link
+                          href={`/folders/${doc.folder_id}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-300"
+                        >
+                          📁 {folderMap[doc.folder_id]}
+                        </Link>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">{statusBadge(doc.status)}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{fileSize(doc.file_size_bytes)}</td>
@@ -317,6 +390,20 @@ export default function DocumentsPage() {
                       <Link href={`/documents/${doc.id}`}>
                         <Button variant="ghost" size="sm">View</Button>
                       </Link>
+                      {folders.length > 0 && (
+                        <select
+                          value={doc.folder_id ?? ''}
+                          disabled={movingId === doc.id}
+                          onChange={(e) => void handleMove(doc.id, e.target.value || null)}
+                          className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                          title="Move to folder"
+                        >
+                          <option value="">No folder</option>
+                          {folders.map((f) => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                          ))}
+                        </select>
+                      )}
                       <Button
                         variant="secondary"
                         size="sm"

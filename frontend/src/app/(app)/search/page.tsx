@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { searchDocuments } from '@/lib/api/search';
-import type { SearchGroup, SearchResponse } from '@/types/api';
+import { listFolders } from '@/lib/api/folders';
+import type { FolderResponse, SearchGroup, SearchResponse } from '@/types/api';
 import { Card } from '@/components/ui/Card';
 
 const EXAMPLES = [
@@ -91,7 +92,13 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [error, setError] = useState('');
+  const [folders, setFolders] = useState<FolderResponse[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void listFolders().then((r) => setFolders(r.items)).catch(() => {});
+  }, []);
 
   async function handleSearch(q: string) {
     const trimmed = q.trim();
@@ -100,7 +107,7 @@ export default function SearchPage() {
     setError('');
     setResults(null);
     try {
-      const res = await searchDocuments(trimmed, 20);
+      const res = await searchDocuments(trimmed, 20, selectedFolder || null);
       setResults(res);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -131,6 +138,18 @@ export default function SearchPage() {
             placeholder="Search across all documents…"
             className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-blue-400"
           />
+          {folders.length > 0 && (
+            <select
+              value={selectedFolder}
+              onChange={(e) => setSelectedFolder(e.target.value)}
+              className="rounded-xl border border-gray-300 bg-white px-3 py-3 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              <option value="">All folders</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          )}
           <button
             type="submit"
             disabled={!hasQuery || loading}

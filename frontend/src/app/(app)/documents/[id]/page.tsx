@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getDocument, downloadVersion, listVersions, archiveDocument, restoreDocument, favoriteDocument, unfavoriteDocument } from '@/lib/api/documents';
+import { getDocument, downloadVersion, listVersions, archiveDocument, restoreDocument, favoriteDocument, unfavoriteDocument, moveDocument } from '@/lib/api/documents';
+import { listFolders } from '@/lib/api/folders';
 import { listSignatures } from '@/lib/api/signatures';
 import { listReviews } from '@/lib/api/reviews';
 import type {
   DocumentResponse,
   DocumentVersionListItem,
+  FolderResponse,
   ReviewResponse,
   SignatureResponse,
 } from '@/types/api';
@@ -89,9 +91,11 @@ export default function DocumentDetailPage() {
   const [versions, setVersions] = useState<DocumentVersionListItem[]>([]);
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [folders, setFolders] = useState<FolderResponse[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
   const [starring, setStarring] = useState(false);
+  const [movingFolder, setMovingFolder] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPoll() {
@@ -106,12 +110,14 @@ export default function DocumentDetailPage() {
 
     async function init() {
       try {
-        const [d, s, v, r] = await Promise.all([
+        const [d, s, v, r, fl] = await Promise.all([
           getDocument(id),
           listSignatures(id),
           listVersions(id),
           listReviews(id),
+          listFolders(),
         ]);
+        setFolders(fl.items);
         if (cancelled) return;
         setDoc(d);
         setSigs(s.items);
@@ -158,6 +164,19 @@ export default function DocumentDetailPage() {
       // ignore
     } finally {
       setArchiving(false);
+    }
+  }
+
+  async function handleMoveFolder(folderId: string | null) {
+    if (!doc) return;
+    setMovingFolder(true);
+    try {
+      const updated = await moveDocument(id, folderId);
+      setDoc(updated);
+    } catch {
+      // ignore
+    } finally {
+      setMovingFolder(false);
     }
   }
 
@@ -272,6 +291,30 @@ export default function DocumentDetailPage() {
           {/* Document info */}
           <Card>
             <CardHeader title="Document info" />
+            {folders.length > 0 && (
+              <div className="mb-4 flex items-center gap-3">
+                <span className="text-sm text-gray-500 dark:text-slate-400">Folder:</span>
+                {doc.folder_id && (
+                  <Link
+                    href={`/folders/${doc.folder_id}`}
+                    className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-700 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-300"
+                  >
+                    📁 {folders.find((f) => f.id === doc.folder_id)?.name ?? 'Folder'}
+                  </Link>
+                )}
+                <select
+                  value={doc.folder_id ?? ''}
+                  disabled={movingFolder}
+                  onChange={(e) => void handleMoveFolder(e.target.value || null)}
+                  className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  <option value="">No folder</option>
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <dl className="grid grid-cols-2 gap-3 text-sm">
               {[
                 ['File name', doc.original_name],

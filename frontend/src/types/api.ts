@@ -29,6 +29,7 @@ export interface DocumentResponse {
   is_favorite: boolean;
   is_deleted: boolean;
   deleted_at: string | null;
+  folder_id: string | null;
   page_count: number | null;
   chunk_count: number;
   owner_id: string;
@@ -51,6 +52,21 @@ export interface DocumentStatsResponse {
   signatures: number;
   favorites: number;
   trash: number;
+  folders: number;
+}
+
+export interface FolderResponse {
+  id: string;
+  owner_id: string | null;
+  name: string;
+  doc_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FolderListResponse {
+  items: FolderResponse[];
+  total: number;
 }
 
 export interface Source {
@@ -210,6 +226,12 @@ export interface SearchResponse {
   total_hits: number;
   total_documents: number;
   groups: SearchGroup[];
+}
+
+export interface SearchRequest {
+  query: string;
+  top_k?: number;
+  folder_id?: string | null;
 }
 
 export interface ApiError {

@@ -22,6 +22,7 @@ class DocumentResponse(BaseModel):
     is_favorite: bool
     is_deleted: bool
     deleted_at: datetime | None
+    folder_id: UUID | None
     owner_id: UUID | None
     created_at: datetime
     updated_at: datetime
@@ -31,6 +32,15 @@ class DocumentResponse(BaseModel):
 
 class BulkActionRequest(BaseModel):
     ids: list[UUID] = Field(min_length=1, max_length=50)
+
+
+class BulkMoveRequest(BaseModel):
+    ids: list[UUID] = Field(min_length=1, max_length=50)
+    folder_id: UUID | None = None
+
+
+class MoveRequest(BaseModel):
+    folder_id: UUID | None = None
 
 
 class BulkFavoriteRequest(BaseModel):
