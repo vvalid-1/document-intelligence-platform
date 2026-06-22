@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
+
+# Disable HuggingFace xet (Xet storage) protocol — falls back to standard HTTPS.
+# Required: xet binary bundled with huggingface_hub 0.36+ fails with "Permission denied"
+# when the container's temp filesystem blocks executable mappings.
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 
 logger = logging.getLogger(__name__)
 
@@ -47,23 +53,29 @@ def transcribe_audio(file_path: Path) -> TranscriptionResult:
     model = _get_model()
     logger.info("Starting transcription: %s", file_path.name)
 
-    segments, info = model.transcribe(
-        str(file_path),
-        beam_size=5,
-        vad_filter=True,        # skip silent regions
-        vad_parameters={"min_silence_duration_ms": 500},
-    )
-
-    # Materialise the generator (lazy by default in faster-whisper)
-    text_parts: list[str] = []
-    duration = 0.0
-    for seg in segments:
-        text_parts.append(seg.text.strip())
-        duration = max(duration, seg.end)
+    try:
+        segments_gen, info = model.transcribe(
+            str(file_path),
+            beam_size=5,
+            vad_filter=True,
+            vad_parameters={"min_silence_duration_ms": 500},
+        )
+        # Materialise the lazy generator
+        text_parts: list[str] = []
+        duration = 0.0
+        for seg in segments_gen:
+            text_parts.append(seg.text.strip())
+            duration = max(duration, seg.end)
+        detected_language = getattr(info, "language", "unknown") or "unknown"
+        detected_duration = (getattr(info, "duration", None) or duration) or 0.0
+    except ValueError:
+        # All audio removed by VAD (silent file) — return empty transcript
+        logger.warning("Transcription produced no segments (silent or empty audio): %s", file_path.name)
+        text_parts = []
+        detected_language = "unknown"
+        detected_duration = 0.0
 
     full_text = " ".join(text_parts).strip()
-    detected_language = info.language if hasattr(info, "language") else "unknown"
-    detected_duration = info.duration if hasattr(info, "duration") and info.duration else duration
 
     logger.info(
         "Transcription complete: %.1f s, language=%s, words=%d",
