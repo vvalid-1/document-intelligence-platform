@@ -26,33 +26,16 @@ export default function ArchivedPage() {
 
   async function load(p: number, silent = false) {
     if (!silent) setLoading(true);
-    try {
-      const r = await listDocuments(p, 20, { archived: true });
-      setDocs(r.items);
-      setTotal(r.total);
-    } catch {
-      // ignore
-    } finally {
-      if (!silent) setLoading(false);
-    }
+    try { const r = await listDocuments(p, 20, { archived: true }); setDocs(r.items); setTotal(r.total); }
+    catch { /* ignore */ } finally { if (!silent) setLoading(false); }
   }
 
-  useEffect(() => {
-    void load(page);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  useEffect(() => { void load(page); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRestore(id: string) {
     if (!confirm('Restore this document to your active library?')) return;
     setRestoringId(id);
-    try {
-      await restoreDocument(id);
-      await load(page, true);
-    } catch {
-      // ignore
-    } finally {
-      setRestoringId(null);
-    }
+    try { await restoreDocument(id); await load(page, true); } catch { /* ignore */ } finally { setRestoringId(null); }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / 20));
@@ -61,68 +44,55 @@ export default function ArchivedPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Archived Documents</h1>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{total} archived</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Archived</h1>
+          <p className="mt-0.5 text-sm text-slate-500">{total} archived document{total !== 1 ? 's' : ''}</p>
         </div>
-        <Link href="/documents">
-          <Button variant="secondary">← Active library</Button>
-        </Link>
       </div>
 
       <Card padding={false}>
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <span className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <div className="space-y-2 p-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="h-14 rounded-xl shimmer" />)}
           </div>
         ) : docs.length === 0 ? (
-          <div className="py-16 text-center">
-            <p className="text-2xl mb-3">📦</p>
-            <p className="font-medium text-gray-700 dark:text-slate-300">No archived documents</p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+          <div className="py-20 text-center">
+            <div className="mb-4 flex justify-center text-slate-700">
+              <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </div>
+            <p className="text-slate-500">No archived documents</p>
+            <p className="mt-1 text-sm text-slate-600">
               Archive documents from the{' '}
-              <Link href="/documents" className="text-blue-600 hover:underline dark:text-blue-400">
-                Documents page
-              </Link>{' '}
+              <Link href="/documents" className="text-indigo-400 hover:text-indigo-300 transition-colors">Documents page</Link>{' '}
               to keep them out of your active library.
             </p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
-              <tr>
-                <th className="px-6 py-3 text-left">Document</th>
-                <th className="px-6 py-3 text-left">Type</th>
-                <th className="px-6 py-3 text-left">Size</th>
-                <th className="px-6 py-3 text-left">Archived</th>
-                <th className="px-6 py-3 text-right">Actions</th>
+            <thead>
+              <tr className="border-b border-white/[0.05]">
+                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Document</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Type</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Size</th>
+                <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Archived</th>
+                <th className="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-widest text-slate-600">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+            <tbody className="divide-y divide-white/[0.04]">
               {docs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                  <td className="px-6 py-3">
-                    <Link
-                      href={`/documents/${doc.id}`}
-                      className="font-medium text-gray-900 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400"
-                    >
+                <tr key={doc.id} className="transition-colors hover:bg-white/[0.025]">
+                  <td className="px-6 py-3.5">
+                    <Link href={`/documents/${doc.id}`} className="font-medium text-slate-200 hover:text-indigo-400 transition-colors">
                       {doc.title}
                     </Link>
-                    <p className="text-xs text-gray-400 dark:text-slate-500">{doc.original_name}</p>
+                    <p className="text-xs text-slate-600">{doc.original_name}</p>
                   </td>
-                  <td className="px-6 py-3 text-gray-500 dark:text-slate-400">
-                    {doc.mime_type.split('/').pop()?.toUpperCase() ?? '—'}
-                  </td>
-                  <td className="px-6 py-3 text-gray-500 dark:text-slate-400">{fileSize(doc.file_size_bytes)}</td>
-                  <td className="px-6 py-3 text-gray-500 dark:text-slate-400">
-                    {doc.archived_at ? fmtDate(doc.archived_at) : '—'}
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={restoringId === doc.id}
-                      onClick={() => void handleRestore(doc.id)}
-                    >
+                  <td className="px-6 py-3.5 text-xs text-slate-500">{doc.mime_type.split('/').pop()?.toUpperCase() ?? '—'}</td>
+                  <td className="px-6 py-3.5 text-xs text-slate-500">{fileSize(doc.file_size_bytes)}</td>
+                  <td className="px-6 py-3.5 text-xs text-slate-500">{doc.archived_at ? fmtDate(doc.archived_at) : '—'}</td>
+                  <td className="px-6 py-3.5 text-right">
+                    <Button variant="glass" size="xs" loading={restoringId === doc.id} onClick={() => void handleRestore(doc.id)}>
                       Restore
                     </Button>
                   </td>
@@ -133,16 +103,10 @@ export default function ArchivedPage() {
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-6 py-3 dark:border-slate-700">
-            <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              Previous
-            </Button>
-            <span className="text-sm text-gray-500 dark:text-slate-400">
-              Page {page} of {totalPages}
-            </span>
-            <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-              Next
-            </Button>
+          <div className="flex items-center justify-between border-t border-white/[0.05] px-6 py-3">
+            <Button variant="glass" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Previous</Button>
+            <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
+            <Button variant="glass" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next →</Button>
           </div>
         )}
       </Card>

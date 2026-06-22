@@ -5,21 +5,40 @@ import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  hint?: string;
+  icon?: React.ReactNode;
 }
 
-export function Input({ label, error, className = '', ...rest }: InputProps) {
+export function Input({ label, error, hint, icon, className = '', ...rest }: InputProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      {label && <label className="text-sm font-medium text-gray-800 dark:text-slate-300">{label}</label>}
-      <input
-        {...rest}
-        className={`rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 ${
-          error
-            ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20 dark:border-red-600'
-            : 'border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20 dark:border-slate-600 dark:hover:border-slate-500 dark:focus:border-blue-500'
-        } ${className}`}
-      />
-      {error && <span className="text-xs text-red-500">{error}</span>}
+    <div className="w-full">
+      {label && (
+        <label className="mb-1.5 block text-xs font-medium text-slate-400 uppercase tracking-wider">
+          {label}
+        </label>
+      )}
+      <div className="relative">
+        {icon && (
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">
+            {icon}
+          </div>
+        )}
+        <input
+          {...rest}
+          className={[
+            'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm text-slate-100',
+            'placeholder:text-slate-600',
+            'focus:border-indigo-500/50 focus:bg-white/[0.06] focus:outline-none focus:ring-1 focus:ring-indigo-500/40',
+            'transition-all duration-200',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            error ? 'border-rose-500/50 focus:border-rose-500/50 focus:ring-rose-500/40' : '',
+            icon ? 'pl-10' : '',
+            className,
+          ].filter(Boolean).join(' ')}
+        />
+      </div>
+      {error && <p className="mt-1.5 text-xs text-rose-400">{error}</p>}
+      {hint && !error && <p className="mt-1.5 text-xs text-slate-600">{hint}</p>}
     </div>
   );
 }
@@ -27,21 +46,30 @@ export function Input({ label, error, className = '', ...rest }: InputProps) {
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
+  hint?: string;
 }
 
-export function Textarea({ label, error, className = '', ...rest }: TextareaProps) {
+export function Textarea({ label, error, hint, className = '', ...rest }: TextareaProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      {label && <label className="text-sm font-medium text-gray-800 dark:text-slate-300">{label}</label>}
+    <div className="w-full">
+      {label && (
+        <label className="mb-1.5 block text-xs font-medium text-slate-400 uppercase tracking-wider">
+          {label}
+        </label>
+      )}
       <textarea
         {...rest}
-        className={`rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 disabled:bg-gray-50 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:disabled:bg-slate-800 ${
-          error
-            ? 'border-red-400 focus:border-red-400 focus:ring-red-500/20 dark:border-red-600'
-            : 'border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-blue-500/20 dark:border-slate-600 dark:hover:border-slate-500 dark:focus:border-blue-500'
-        } ${className}`}
+        className={[
+          'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-slate-100',
+          'placeholder:text-slate-600',
+          'focus:border-indigo-500/50 focus:bg-white/[0.06] focus:outline-none focus:ring-1 focus:ring-indigo-500/40',
+          'transition-all duration-200 resize-none',
+          error ? 'border-rose-500/50' : '',
+          className,
+        ].filter(Boolean).join(' ')}
       />
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {error && <p className="mt-1.5 text-xs text-rose-400">{error}</p>}
+      {hint && !error && <p className="mt-1.5 text-xs text-slate-600">{hint}</p>}
     </div>
   );
 }

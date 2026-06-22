@@ -3,15 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import {
-  clearDocumentSession,
-  getOrCreateDocumentSession,
-  listMessages,
-  sendMessage,
-} from '@/lib/api/chat';
+import { clearDocumentSession, getOrCreateDocumentSession, listMessages, sendMessage } from '@/lib/api/chat';
 import { PdfPreview } from '@/components/ui/PdfPreview';
 import { Button } from '@/components/ui/Button';
-import { Textarea } from '@/components/ui/Input';
 
 const GREETING_RE = /^\s*(hi|hello|hey|howdy|greetings|sup|yo|good\s+(morning|afternoon|evening))\W*\s*$/i;
 const GREETING_REPLY = "Hello! I'm your document assistant. Ask me anything about this document.";
@@ -20,6 +14,20 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   pending?: boolean;
+}
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 py-1">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce"
+          style={{ animationDelay: `${i * 150}ms`, animationDuration: '0.8s' }}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function ChatPage() {
@@ -31,6 +39,7 @@ export default function ChatPage() {
   const [error, setError] = useState('');
   const [initError, setInitError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   async function initSession(forceNew = false) {
     setInitError('');
@@ -49,9 +58,7 @@ export default function ChatPage() {
     }
   }
 
-  useEffect(() => {
-    void initSession();
-  }, [id]);
+  useEffect(() => { void initSession(); }, [id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,6 +70,7 @@ export default function ChatPage() {
     setInput('');
     setError('');
     setBusy(true);
+    textareaRef.current?.focus();
 
     if (GREETING_RE.test(userMsg)) {
       setMessages((prev) => [
@@ -96,18 +104,25 @@ export default function ChatPage() {
   }
 
   async function handleNewChat() {
-    setMessages([]);
-    setSessionId(null);
-    setError('');
+    setMessages([]); setSessionId(null); setError('');
     await initSession(true);
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-[#0a0f1e]">
       {/* PDF panel */}
-      <div className="hidden w-5/12 shrink-0 border-r border-gray-200 lg:flex lg:flex-col dark:border-slate-700">
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2 dark:bg-slate-800 dark:border-slate-700">
-          <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Document preview</span>
+      <div className="hidden w-5/12 shrink-0 border-r border-white/[0.06] lg:flex lg:flex-col">
+        <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4 py-3">
+          <Link href={`/documents/${id}`}>
+            <Button variant="ghost" size="xs">
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </Button>
+          </Link>
+          <span className="text-xs font-medium text-slate-600">Document preview</span>
+          <div className="w-16" />
         </div>
         <div className="flex-1 overflow-hidden">
           <PdfPreview documentId={id} className="h-full" />
@@ -115,45 +130,62 @@ export default function ChatPage() {
       </div>
 
       {/* Chat panel */}
-      <div className="flex flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-6 py-3 dark:bg-slate-800 dark:border-slate-700">
-          <Link href={`/documents/${id}`}>
-            <Button variant="ghost" size="sm">←</Button>
+      <div className="flex flex-1 flex-col min-h-0">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-white/[0.06] bg-white/[0.02] px-6 py-3">
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-500/10">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} className="text-indigo-400">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <h1 className="flex-1 text-sm font-semibold text-slate-100">Chat with document</h1>
+          <Link href={`/documents/${id}`} className="lg:hidden">
+            <Button variant="ghost" size="xs">← Back</Button>
           </Link>
-          <h1 className="flex-1 text-sm font-semibold text-gray-900 dark:text-slate-100">Chat with document</h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={() => void handleNewChat()}
-          >
+          <Button variant="glass" size="xs" disabled={busy} onClick={() => void handleNewChat()}>
             New chat
           </Button>
         </div>
 
         {initError && (
-          <div className="border-b border-red-100 bg-red-50 px-6 py-2 text-sm text-red-600">
+          <div className="border-b border-rose-500/20 bg-rose-500/[0.06] px-6 py-2.5 text-sm text-rose-400">
             {initError}
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin">
           {messages.length === 0 && !initError && (
-            <div className="mt-16 text-center text-sm text-gray-400 dark:text-slate-500">
-              Ask anything about this document.
+            <div className="flex flex-col items-center justify-center pt-16 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.25}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-slate-400">Ask anything about this document</p>
+              <p className="mt-1 text-xs text-slate-600">The AI has read your document and can answer questions about it</p>
             </div>
           )}
-          <div className="mx-auto max-w-2xl space-y-4">
+
+          <div className="mx-auto max-w-2xl space-y-5">
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'assistant' && (
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 mt-1">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} className="text-indigo-400">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                )}
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  className={[
+                    'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
                     m.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-200 bg-white text-gray-800 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100'
-                  }`}
+                      ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-[0_4px_16px_rgba(99,102,241,0.3)]'
+                      : 'border border-white/[0.08] bg-white/[0.04] text-slate-200',
+                  ].join(' ')}
                 >
-                  {m.pending ? <span className="animate-pulse">▌</span> : m.content}
+                  {m.pending ? <TypingDots /> : m.content}
                 </div>
               </div>
             ))}
@@ -162,37 +194,45 @@ export default function ChatPage() {
         </div>
 
         {error && (
-          <div className="border-t border-red-100 bg-red-50 px-6 py-2 text-sm text-red-600">
+          <div className="border-t border-rose-500/20 bg-rose-500/[0.06] px-6 py-2.5 text-sm text-rose-400">
             {error}
           </div>
         )}
 
-        <div className="border-t border-gray-200 bg-white px-6 py-4 dark:bg-slate-800 dark:border-slate-700">
+        {/* Input */}
+        <div className="border-t border-white/[0.06] bg-white/[0.02] px-6 py-4">
           <div className="mx-auto flex max-w-2xl gap-3">
-            <Textarea
+            <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question about the document…"
               rows={2}
-              className="flex-1 resize-none"
               disabled={busy || !sessionId}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void handleSend();
-                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); }
               }}
+              className={[
+                'flex-1 resize-none rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm text-slate-100',
+                'placeholder:text-slate-600 focus:border-indigo-500/50 focus:bg-white/[0.06] focus:outline-none focus:ring-1 focus:ring-indigo-500/40',
+                'transition-all duration-200 disabled:opacity-50 scrollbar-thin',
+              ].join(' ')}
             />
             <Button
               onClick={() => void handleSend()}
               loading={busy}
               disabled={!input.trim() || !sessionId}
+              size="md"
+              className="self-end"
             >
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
               Send
             </Button>
           </div>
-          <p className="mx-auto mt-1.5 max-w-2xl text-xs text-gray-400 dark:text-slate-500">
-            Enter to send · Shift+Enter for new line · Response may take up to 3 minutes on CPU
+          <p className="mx-auto mt-2 max-w-2xl text-[11px] text-slate-700">
+            Enter to send · Shift+Enter for new line · Responses may take up to 3 minutes on CPU
           </p>
         </div>
       </div>

@@ -56,16 +56,13 @@ export default function DocumentsPage() {
   async function load(p: number, silent = false) {
     if (!silent) setLoading(true);
     try {
-      const opts: Parameters<typeof listDocuments>[2] = {
-        favorite: tab === 'favorites',
-      };
+      const opts: Parameters<typeof listDocuments>[2] = { favorite: tab === 'favorites' };
       if (selectedFolder) opts.folder_id = selectedFolder;
       const r = await listDocuments(p, 20, opts);
       setDocs(r.items);
       setTotal(r.total);
       setSelected(new Set());
-      const anyProcessing = r.items.some((d) => d.status === 'processing');
-      if (!anyProcessing) stopPoll();
+      if (!r.items.some((d) => d.status === 'processing')) stopPoll();
     } catch {
       // ignore
     } finally {
@@ -85,11 +82,8 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     stopPoll();
-    const anyProcessing = docs.some((d) => d.status === 'processing');
-    if (anyProcessing) {
-      pollRef.current = setInterval(() => {
-        void load(page, true);
-      }, POLL_INTERVAL_MS);
+    if (docs.some((d) => d.status === 'processing')) {
+      pollRef.current = setInterval(() => { void load(page, true); }, POLL_INTERVAL_MS);
     }
     return () => stopPoll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,125 +92,62 @@ export default function DocumentsPage() {
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
 
   function toggleAll() {
-    if (selected.size === docs.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(docs.map((d) => d.id)));
-    }
+    setSelected(selected.size === docs.length ? new Set() : new Set(docs.map((d) => d.id)));
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Move this document to trash?')) return;
     setDeletingId(id);
-    try {
-      await deleteDocument(id);
-      await load(page);
-    } catch {
-      // ignore
-    } finally {
-      setDeletingId(null);
-    }
+    try { await deleteDocument(id); await load(page); } catch { /* ignore */ } finally { setDeletingId(null); }
   }
 
   async function handleArchive(id: string) {
-    if (!confirm('Archive this document? You can restore it later from the Archived page.')) return;
+    if (!confirm('Archive this document?')) return;
     setArchivingId(id);
-    try {
-      await archiveDocument(id);
-      await load(page);
-    } catch {
-      // ignore
-    } finally {
-      setArchivingId(null);
-    }
+    try { await archiveDocument(id); await load(page); } catch { /* ignore */ } finally { setArchivingId(null); }
   }
 
   async function handleStar(doc: DocumentResponse) {
     setStarringId(doc.id);
     try {
-      if (doc.is_favorite) {
-        await unfavoriteDocument(doc.id);
-      } else {
-        await favoriteDocument(doc.id);
-      }
+      if (doc.is_favorite) await unfavoriteDocument(doc.id); else await favoriteDocument(doc.id);
       await load(page, true);
-    } catch {
-      // ignore
-    } finally {
-      setStarringId(null);
-    }
+    } catch { /* ignore */ } finally { setStarringId(null); }
   }
 
   async function handleMove(docId: string, folderId: string | null) {
     setMovingId(docId);
-    try {
-      await moveDocument(docId, folderId);
-      await load(page, true);
-    } catch {
-      // ignore
-    } finally {
-      setMovingId(null);
-    }
+    try { await moveDocument(docId, folderId); await load(page, true); } catch { /* ignore */ } finally { setMovingId(null); }
   }
 
   async function handleBulkArchive() {
-    if (selected.size === 0) return;
+    if (!selected.size) return;
     setBulkLoading(true);
-    try {
-      await bulkArchive(Array.from(selected));
-      await load(page);
-    } catch {
-      // ignore
-    } finally {
-      setBulkLoading(false);
-    }
+    try { await bulkArchive(Array.from(selected)); await load(page); } catch { /* ignore */ } finally { setBulkLoading(false); }
   }
 
   async function handleBulkTrash() {
-    if (selected.size === 0) return;
-    if (!confirm(`Move ${selected.size} document(s) to trash?`)) return;
+    if (!selected.size || !confirm(`Move ${selected.size} document(s) to trash?`)) return;
     setBulkLoading(true);
-    try {
-      await bulkTrash(Array.from(selected));
-      await load(page);
-    } catch {
-      // ignore
-    } finally {
-      setBulkLoading(false);
-    }
+    try { await bulkTrash(Array.from(selected)); await load(page); } catch { /* ignore */ } finally { setBulkLoading(false); }
   }
 
   async function handleBulkStar(value: boolean) {
-    if (selected.size === 0) return;
+    if (!selected.size) return;
     setBulkLoading(true);
-    try {
-      await bulkFavorite(Array.from(selected), value);
-      await load(page, true);
-    } catch {
-      // ignore
-    } finally {
-      setBulkLoading(false);
-    }
+    try { await bulkFavorite(Array.from(selected), value); await load(page, true); } catch { /* ignore */ } finally { setBulkLoading(false); }
   }
 
   async function handleBulkMove(folderId: string | null) {
-    if (selected.size === 0) return;
+    if (!selected.size) return;
     setBulkLoading(true);
-    try {
-      await bulkMove(Array.from(selected), folderId);
-      await load(page, true);
-    } catch {
-      // ignore
-    } finally {
-      setBulkLoading(false);
-    }
+    try { await bulkMove(Array.from(selected), folderId); await load(page, true); } catch { /* ignore */ } finally { setBulkLoading(false); }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / 20));
@@ -225,30 +156,37 @@ export default function DocumentsPage() {
 
   return (
     <div className="p-8">
+      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Documents</h1>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{total} total</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Documents</h1>
+          <p className="mt-0.5 text-sm text-slate-500">{total} document{total !== 1 ? 's' : ''} total</p>
         </div>
         <Link href="/documents/upload">
-          <Button>Upload document</Button>
+          <Button size="md">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Upload
+          </Button>
         </Link>
       </div>
 
-      {/* Filter row: tabs + folder dropdown */}
-      <div className="mb-4 flex items-center justify-between gap-4 border-b border-gray-200 pb-2 dark:border-slate-700">
-        <div className="flex gap-1">
+      {/* Filter row */}
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex rounded-xl border border-white/[0.07] bg-white/[0.03] p-0.5">
           {(['all', 'favorites'] as FilterTab[]).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setPage(1); }}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={[
+                'rounded-lg px-4 py-1.5 text-sm font-medium transition-all duration-200',
                 tab === t
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
+                  ? 'bg-indigo-500/20 text-indigo-300 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-300',
+              ].join(' ')}
             >
-              {t === 'all' ? 'All' : '★ Starred'}
+              {t === 'all' ? 'All documents' : '★ Starred'}
             </button>
           ))}
         </div>
@@ -257,7 +195,7 @@ export default function DocumentsPage() {
           <select
             value={selectedFolder}
             onChange={(e) => { setSelectedFolder(e.target.value); setPage(1); }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-slate-300 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
           >
             <option value="">All folders</option>
             {folders.map((f) => (
@@ -269,24 +207,19 @@ export default function DocumentsPage() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 dark:border-blue-800 dark:bg-blue-900/20">
-          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.06] px-5 py-3">
+          <span className="text-sm font-semibold text-indigo-300">
             {selected.size} selected
           </span>
-          <Button variant="secondary" size="sm" loading={bulkLoading} onClick={() => void handleBulkArchive()}>
-            Archive
-          </Button>
-          <Button variant="secondary" size="sm" loading={bulkLoading} onClick={() => void handleBulkStar(true)}>
-            Star
-          </Button>
-          <Button variant="secondary" size="sm" loading={bulkLoading} onClick={() => void handleBulkStar(false)}>
-            Unstar
-          </Button>
+          <div className="h-4 w-px bg-white/10" />
+          <Button variant="secondary" size="sm" loading={bulkLoading} onClick={() => void handleBulkArchive()}>Archive</Button>
+          <Button variant="secondary" size="sm" loading={bulkLoading} onClick={() => void handleBulkStar(true)}>Star</Button>
+          <Button variant="secondary" size="sm" loading={bulkLoading} onClick={() => void handleBulkStar(false)}>Unstar</Button>
           {folders.length > 0 && (
             <select
               onChange={(e) => { void handleBulkMove(e.target.value || null); e.target.value = ''; }}
               defaultValue=""
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
             >
               <option value="" disabled>Move to folder…</option>
               <option value="">Remove from folder</option>
@@ -295,11 +228,9 @@ export default function DocumentsPage() {
               ))}
             </select>
           )}
-          <Button variant="danger" size="sm" loading={bulkLoading} onClick={() => void handleBulkTrash()}>
-            Trash
-          </Button>
+          <Button variant="danger" size="sm" loading={bulkLoading} onClick={() => void handleBulkTrash()}>Trash</Button>
           <button
-            className="ml-auto text-xs text-gray-500 hover:text-gray-700 dark:text-slate-400"
+            className="ml-auto text-xs text-slate-600 hover:text-slate-400 transition-colors"
             onClick={() => setSelected(new Set())}
           >
             Clear
@@ -309,94 +240,111 @@ export default function DocumentsPage() {
 
       <Card padding={false}>
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <span className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <div className="space-y-2 p-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-14 rounded-xl shimmer" />
+            ))}
           </div>
         ) : docs.length === 0 ? (
-          <div className="py-16 text-center">
-            <p className="text-gray-500">
+          <div className="py-20 text-center">
+            <div className="mb-4 flex justify-center text-slate-700">
+              <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="text-slate-500">
               {tab === 'favorites' ? 'No starred documents.' : 'No documents found.'}
             </p>
             {tab === 'all' && !selectedFolder && (
-              <Link href="/documents/upload" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
+              <Link href="/documents/upload" className="mt-2 inline-block text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
                 Upload your first document →
               </Link>
             )}
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
-              <tr>
+            <thead>
+              <tr className="border-b border-white/[0.05]">
                 <th className="px-4 py-3 text-left w-10">
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} className="cursor-pointer rounded" />
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="cursor-pointer rounded accent-indigo-500"
+                  />
                 </th>
-                <th className="px-4 py-3 text-left w-8"></th>
-                <th className="px-4 py-3 text-left">Document</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-left">Size</th>
-                <th className="px-4 py-3 text-left">Pages</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-3 py-3 w-8" />
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Document</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Size</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">Pages</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-widest text-slate-600">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+            <tbody className="divide-y divide-white/[0.04]">
               {docs.map((doc) => (
                 <tr
                   key={doc.id}
-                  className={`hover:bg-gray-50 dark:hover:bg-slate-700/50 ${selected.has(doc.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
+                  className={[
+                    'transition-colors duration-150',
+                    selected.has(doc.id)
+                      ? 'bg-indigo-500/[0.06]'
+                      : 'hover:bg-white/[0.025]',
+                  ].join(' ')}
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <input
                       type="checkbox"
                       checked={selected.has(doc.id)}
                       onChange={() => toggleSelect(doc.id)}
-                      className="cursor-pointer rounded"
+                      className="cursor-pointer rounded accent-indigo-500"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3.5">
                     <button
                       onClick={() => void handleStar(doc)}
                       disabled={starringId === doc.id}
-                      className={`text-lg leading-none transition-colors ${
-                        doc.is_favorite
-                          ? 'text-amber-400 hover:text-amber-500'
-                          : 'text-gray-300 hover:text-amber-400 dark:text-slate-600'
-                      }`}
+                      className={[
+                        'transition-all duration-200',
+                        doc.is_favorite ? 'text-amber-400' : 'text-slate-700 hover:text-amber-400',
+                      ].join(' ')}
                       title={doc.is_favorite ? 'Unstar' : 'Star'}
                     >
-                      ★
+                      <svg width="14" height="14" fill={doc.is_favorite ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={doc.is_favorite ? 0 : 1.75}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
                     </button>
                   </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/documents/${doc.id}`} className="font-medium text-gray-900 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400">
+                  <td className="px-4 py-3.5">
+                    <Link
+                      href={`/documents/${doc.id}`}
+                      className="font-medium text-slate-200 hover:text-indigo-400 transition-colors"
+                    >
                       {doc.title}
                     </Link>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-xs text-gray-400 dark:text-slate-500">{doc.original_name}</p>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <p className="text-xs text-slate-600">{doc.original_name}</p>
                       {doc.folder_id && folderMap[doc.folder_id] && (
-                        <Link
-                          href={`/folders/${doc.folder_id}`}
-                          className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700 hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-300"
-                        >
-                          📁 {folderMap[doc.folder_id]}
-                        </Link>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-400">
+                          {folderMap[doc.folder_id]}
+                        </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">{statusBadge(doc.status)}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{fileSize(doc.file_size_bytes)}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{doc.page_count ?? '—'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-4 py-3.5">{statusBadge(doc.status)}</td>
+                  <td className="px-4 py-3.5 text-xs text-slate-500">{fileSize(doc.file_size_bytes)}</td>
+                  <td className="px-4 py-3.5 text-xs text-slate-500">{doc.page_count ?? '—'}</td>
+                  <td className="px-4 py-3.5 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
                       <Link href={`/documents/${doc.id}`}>
-                        <Button variant="ghost" size="sm">View</Button>
+                        <Button variant="glass" size="xs">View</Button>
                       </Link>
                       {folders.length > 0 && (
                         <select
                           value={doc.folder_id ?? ''}
                           disabled={movingId === doc.id}
                           onChange={(e) => void handleMove(doc.id, e.target.value || null)}
-                          className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                          title="Move to folder"
+                          className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-xs text-slate-400 focus:outline-none"
                         >
                           <option value="">No folder</option>
                           {folders.map((f) => (
@@ -404,20 +352,10 @@ export default function DocumentsPage() {
                           ))}
                         </select>
                       )}
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        loading={archivingId === doc.id}
-                        onClick={() => void handleArchive(doc.id)}
-                      >
+                      <Button variant="ghost" size="xs" loading={archivingId === doc.id} onClick={() => void handleArchive(doc.id)}>
                         Archive
                       </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        loading={deletingId === doc.id}
-                        onClick={() => void handleDelete(doc.id)}
-                      >
+                      <Button variant="danger" size="xs" loading={deletingId === doc.id} onClick={() => void handleDelete(doc.id)}>
                         Trash
                       </Button>
                     </div>
@@ -429,15 +367,15 @@ export default function DocumentsPage() {
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-6 py-3 dark:border-slate-700">
-            <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              Previous
+          <div className="flex items-center justify-between border-t border-white/[0.05] px-6 py-3">
+            <Button variant="glass" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              ← Previous
             </Button>
-            <span className="text-sm text-gray-500 dark:text-slate-400">
+            <span className="text-xs text-slate-500">
               Page {page} of {totalPages}
             </span>
-            <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-              Next
+            <Button variant="glass" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              Next →
             </Button>
           </div>
         )}

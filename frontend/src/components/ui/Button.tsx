@@ -2,8 +2,8 @@
 
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
-type Size = 'sm' | 'md' | 'lg';
+type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'glass';
+type Size = 'xs' | 'sm' | 'md' | 'lg';
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -12,19 +12,44 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClass: Record<Variant, string> = {
-  primary:
-    'bg-blue-600 text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-300 disabled:shadow-none',
-  secondary:
-    'bg-white text-gray-700 border border-gray-300 shadow-sm hover:bg-gray-50 active:bg-gray-100 disabled:bg-gray-50 disabled:text-gray-400 disabled:shadow-none dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-600 dark:active:bg-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500',
-  danger:
-    'bg-red-600 text-white shadow-sm hover:bg-red-700 active:bg-red-800 disabled:bg-red-300 disabled:shadow-none',
-  ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:active:bg-slate-700',
+  primary: [
+    'bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold',
+    'shadow-[0_4px_16px_rgba(99,102,241,0.4)]',
+    'hover:shadow-[0_4px_24px_rgba(99,102,241,0.6)] hover:brightness-110',
+    'active:scale-[0.98]',
+    'disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed',
+  ].join(' '),
+  secondary: [
+    'bg-white/[0.06] text-slate-200 border border-white/[0.1]',
+    'hover:bg-white/[0.1] hover:border-white/[0.16]',
+    'active:bg-white/[0.04] active:scale-[0.98]',
+    'disabled:opacity-40 disabled:cursor-not-allowed',
+  ].join(' '),
+  danger: [
+    'bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold',
+    'shadow-[0_4px_16px_rgba(239,68,68,0.3)]',
+    'hover:shadow-[0_4px_24px_rgba(239,68,68,0.5)] hover:brightness-110',
+    'active:scale-[0.98]',
+    'disabled:opacity-50 disabled:cursor-not-allowed',
+  ].join(' '),
+  ghost: [
+    'bg-transparent text-slate-400',
+    'hover:bg-white/[0.06] hover:text-slate-200',
+    'active:bg-white/[0.04] active:scale-[0.98]',
+  ].join(' '),
+  glass: [
+    'glass text-slate-200 border border-white/[0.1]',
+    'hover:bg-white/[0.08] hover:border-white/[0.2]',
+    'active:scale-[0.98]',
+    'disabled:opacity-40 disabled:cursor-not-allowed',
+  ].join(' '),
 };
 
 const sizeClass: Record<Size, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-5 py-2.5 text-sm',
+  xs: 'px-2.5 py-1 text-xs rounded-lg',
+  sm: 'px-3.5 py-1.5 text-sm rounded-xl',
+  md: 'px-4.5 py-2 text-sm rounded-xl',
+  lg: 'px-6 py-2.5 text-sm rounded-xl',
 };
 
 export function Button({
@@ -40,10 +65,17 @@ export function Button({
     <button
       {...rest}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:cursor-not-allowed ${variantClass[variant]} ${sizeClass[size]} ${className}`}
+      className={[
+        'inline-flex items-center justify-center gap-2 font-medium',
+        'transition-all duration-200',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
+        variantClass[variant],
+        sizeClass[size],
+        className,
+      ].filter(Boolean).join(' ')}
     >
       {loading && (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
       )}
       {children}
     </button>
