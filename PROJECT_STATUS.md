@@ -2,7 +2,7 @@
 
 ## Current Version: V2.0
 
-**Stack:** FastAPI · Next.js 14 · PostgreSQL · ChromaDB · Ollama (qwen3:8b / qwen2.5:3b / bge-m3) · Docker Compose
+**Stack:** FastAPI · Next.js 14 · PostgreSQL · ChromaDB · Ollama (qwen2.5:3b / bge-m3) · Faster-Whisper · Docker Compose
 **Deployment:** CPU-only · No paid APIs · Fully local
 
 ---
@@ -13,20 +13,20 @@
 |---|---|
 | Branch | `master` |
 | Remote | `https://github.com/vvalid-1/document-intelligence-platform` |
-| HEAD | `70ee392` |
+| HEAD | `82a0c2d` |
 
 ### Recent Commits (newest first)
 
 | Hash | Message |
 |---|---|
+| `82a0c2d` | docs: rewrite README.md for V2.0 |
+| `c10600e` | docs: add INSTALLATION_GUIDE.md |
+| `e9eee94` | feat(ui): complete dark premium UI/UX redesign |
+| `a559a5e` | fix(v2.0): two media pipeline bugs found during end-to-end test |
+| `b5f60e8` | fix(upload): accept MP3, WAV, MP4 in file picker and drop zone hints |
 | `70ee392` | feat(v2.0): Meeting & Media Intelligence Agent — MP3/WAV/MP4 transcription + AI analysis |
 | `2574a42` | feat(v1.9): Folders / Collections for document organisation |
 | `8c2f426` | feat(v1.8): Favorites, Trash Bin, Bulk Actions, Dashboard stats |
-| `2ef0f2d` | feat(v1.7): Archive & Restore Documents |
-| `5c09c80` | docs: add PROJECT_STATUS.md with V1.6 completion status |
-| `414a81e` | feat(v1.6): Global Search across all documents |
-| `22d43cc` | feat(v1.5): OCR support for scanned PDFs and images (JPG/JPEG/PNG) |
-| `2e8c819` | feat(v1.4): Version Comparison and Diff Viewer |
 
 ---
 
@@ -386,3 +386,54 @@ All deliverables shipped and committed (`70ee392`):
 - [x] `frontend/src/app/(app)/dashboard/page.tsx` — 9th stat card (Media 🎙)
 - [x] Frontend Docker rebuild: `✓ Ready in 221ms` (no TypeScript errors)
 - [x] Pushed to `origin/master`
+
+---
+
+## Post-V2.0 — UI/UX Redesign & Documentation (shipped)
+
+### Dark Premium UI/UX Redesign (`e9eee94`)
+
+Complete visual overhaul of the entire frontend — 26 files modified. Dark-first design (no theme toggle), glassmorphism cards, indigo/violet gradient accent system, SVG icons replacing all emoji, shimmer loading skeletons, smooth hover animations.
+
+**Design system:**
+- Base color: `#0a0f1e` · Surface: `#0f1629` · Sidebar: `#080d1a`
+- Glass cards: `backdrop-blur-xl bg-white/[0.03] border border-white/[0.07]`
+- Accent: indigo-500 → violet-600 gradient with glow shadows
+- CSS custom properties: `--bg-base`, `--accent`, `--surface`
+- Tailwind custom animations: `fadeIn`, `slideUp`, `glowPulse`
+- Shimmer loading skeletons, `hover-lift`, `pulse-glow`, `animate-fade-in-up`
+
+**Files redesigned:**
+- `frontend/src/app/globals.css` — design system custom properties + utilities
+- `frontend/tailwind.config.js` — extended colors, animations, shadows, backdropBlur
+- `frontend/src/components/ui/Card.tsx` — glass card, `hover`/`glow` props, `StatCard`
+- `frontend/src/components/ui/Button.tsx` — `glass` variant, `xs` size, gradient primary
+- `frontend/src/components/ui/Badge.tsx` — dark theme, `indigo`/`orange` colors, `dot` prop
+- `frontend/src/components/ui/Input.tsx` — dark glass style, icon slot, uppercase label
+- `frontend/src/components/ui/ActivityTimeline.tsx` — color-coded icon backgrounds per event type
+- `frontend/src/components/layout/Sidebar.tsx` — SVG icons, two nav groups, brand gradient, no ThemeToggle
+- `frontend/src/app/layout.tsx` — always `class="dark"`, ThemeToggle script removed
+- `frontend/src/app/(app)/layout.tsx` — `bg-[#0a0f1e]` + `mesh-bg`
+- `frontend/src/app/(auth)/login/page.tsx` — radial gradient blobs, glass form card, SVG input icons
+- `frontend/src/app/(app)/dashboard/page.tsx` — hero header, 9-tile stat grid, shimmer, SVG icons
+- `frontend/src/app/(app)/documents/page.tsx` — dark table, pill filter tabs, shimmer skeletons
+- `frontend/src/app/(app)/documents/upload/page.tsx` — drag-drop zone, file type pills, gradient icon
+- `frontend/src/app/(app)/documents/[id]/page.tsx` — AI workspace cards, colored per action type
+- `frontend/src/app/(app)/documents/[id]/chat/page.tsx` — `TypingDots` component, gradient user bubbles
+- `frontend/src/app/(app)/documents/[id]/review/page.tsx` — `ScoreRing` SVG animation
+- `frontend/src/app/(app)/documents/[id]/edit/page.tsx` — example chips, emerald result panel
+- `frontend/src/app/(app)/documents/[id]/translate/page.tsx` — language buttons with active glow
+- `frontend/src/app/(app)/documents/[id]/sign/page.tsx` — pink accent mode tabs, dark coordinate grid
+- `frontend/src/app/(app)/documents/[id]/media-analysis/page.tsx` — SVG icons, colored section cards
+- `frontend/src/app/(app)/search/page.tsx` — unified search input, shimmer skeletons
+- `frontend/src/app/(app)/folders/page.tsx` — glass folder grid, sky accent icons
+- `frontend/src/app/(app)/favorites/page.tsx` — dark table, SVG star empty state
+- `frontend/src/app/(app)/archived/page.tsx` — archive SVG empty state, glass table
+- `frontend/src/app/(app)/trash/page.tsx` — amber warning banner, trash SVG empty state
+
+**Frontend build:** `✓ Compiled successfully` · 14/14 static pages · no TypeScript errors
+
+### Documentation (`c10600e`, `82a0c2d`)
+
+- `INSTALLATION_GUIDE.md` — full step-by-step installation guide: required software, Docker/Git install, clone, `.env` setup, JWT secret generation, startup sequence, migrations, Ollama model management, health verification, 9-scenario troubleshooting section
+- `README.md` — complete rewrite for V2.0: project overview, ASCII architecture diagram, multi-agent system diagram, all 6 agents documented, all features documented, full tech stack table, Docker setup, environment variable reference, migration history, Ollama guide, API reference tables (40+ endpoints), screenshots section, V1.0–V2.0 version history, future improvements roadmap
