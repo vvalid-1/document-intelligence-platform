@@ -490,13 +490,17 @@ docker compose exec backend alembic upgrade head
 ### Useful maintenance commands
 
 ```bash
-# Stop all services (data preserved)
+# Stop all services — DATA IS PRESERVED (postgres, chromadb, uploads, models)
 docker compose down
 
-# Stop and remove all data volumes (full reset)
+# Stop and remove ALL data volumes — DESTRUCTIVE, cannot be undone
 docker compose down -v
 
-# Rebuild after code changes
+# Restart a single service without rebuilding (e.g. after .env change)
+docker compose restart backend
+docker compose restart frontend
+
+# Rebuild and restart after code changes
 docker compose up -d --build backend
 docker compose up -d --build frontend
 
@@ -512,6 +516,28 @@ docker compose exec postgres psql -U docplat -d docplat
 # Open a backend Python shell
 docker compose exec backend python
 ```
+
+---
+
+### Updating the project from GitHub
+
+Use this sequence whenever you pull new code on an existing installation:
+
+```bash
+# 1. Pull the latest changes
+git pull origin master
+
+# 2. Rebuild images that changed
+docker compose up -d --build backend frontend
+
+# 3. Apply any new database migrations
+docker compose exec backend alembic upgrade head
+```
+
+> **Safe to re-run.** If there are no new migrations, `alembic upgrade head` exits immediately without making changes. If there are no backend code changes, rebuilding the backend image is fast because Docker caches unchanged layers.
+
+> **Frontend-only change?** You only need to rebuild frontend: `docker compose up -d --build frontend`  
+> **Backend-only change?** You only need to rebuild backend: `docker compose up -d --build backend`
 
 ---
 

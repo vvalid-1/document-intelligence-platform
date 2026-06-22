@@ -406,29 +406,46 @@ The platform runs as six Docker services orchestrated by Docker Compose:
 ### Common Docker commands
 
 ```bash
-# Start everything
+# Start everything (subsequent starts — no rebuild, no migration needed)
 docker compose up -d
 
-# View all service statuses
+# View all service statuses (all 6 should show healthy or running)
 docker compose ps
 
 # Follow logs for a specific service
 docker compose logs -f backend
-docker compose logs -f ollama
 docker compose logs -f frontend
+docker compose logs -f ollama
+docker compose logs -f postgres
+docker compose logs -f chromadb
+docker compose logs -f nginx
 
-# Rebuild backend after code changes
+# Restart a single service without rebuilding (e.g. after .env change)
+docker compose restart backend
+docker compose restart frontend
+
+# Rebuild and restart after code changes
 docker compose up -d --build backend
-
-# Rebuild frontend after code changes
 docker compose up -d --build frontend
 
-# Stop all services (data preserved)
+# Stop all services — DATA IS PRESERVED (postgres, chromadb, uploads, models)
 docker compose down
 
-# Full reset — destroys all data and volumes
+# Full reset — DESTROYS ALL DATA AND VOLUMES — use with caution
 docker compose down -v
 ```
+
+### Updating from GitHub
+
+Pull the latest code, rebuild any changed images, and apply any new migrations:
+
+```bash
+git pull origin master
+docker compose up -d --build backend frontend
+docker compose exec backend alembic upgrade head
+```
+
+> If only documentation or frontend-only changes were pulled, you can skip rebuilding the backend (and vice versa). When in doubt, rebuild both — it is safe to do so.
 
 ---
 
