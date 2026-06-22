@@ -24,6 +24,8 @@ export interface DocumentResponse {
   status: DocumentStatus;
   processing_step: string | null;
   error_message: string | null;
+  is_archived: boolean;
+  archived_at: string | null;
   page_count: number | null;
   chunk_count: number;
   is_deleted: boolean;

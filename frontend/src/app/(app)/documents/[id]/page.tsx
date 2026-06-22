@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getDocument, downloadVersion, listVersions } from '@/lib/api/documents';
+import { getDocument, downloadVersion, listVersions, archiveDocument, restoreDocument } from '@/lib/api/documents';
 import { listSignatures } from '@/lib/api/signatures';
 import { listReviews } from '@/lib/api/reviews';
 import type {
@@ -38,6 +38,10 @@ function buildTimeline(
   const events: TimelineEvent[] = [];
 
   events.push({ label: 'Document uploaded', date: doc.created_at, icon: '📄' });
+
+  if (doc.is_archived && doc.archived_at) {
+    events.push({ label: 'Document archived', date: doc.archived_at, icon: '📦' });
+  }
 
   if (doc.status === 'ready' || doc.status === 'error') {
     events.push({
@@ -86,6 +90,7 @@ export default function DocumentDetailPage() {
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPoll() {
@@ -138,6 +143,23 @@ export default function DocumentDetailPage() {
     };
   }, [id]);
 
+  async function handleToggleArchive() {
+    if (!doc) return;
+    const msg = doc.is_archived
+      ? 'Restore this document to your active library?'
+      : 'Archive this document? You can restore it later from the Archived page.';
+    if (!confirm(msg)) return;
+    setArchiving(true);
+    try {
+      const updated = doc.is_archived ? await restoreDocument(id) : await archiveDocument(id);
+      setDoc(updated);
+    } catch {
+      // ignore
+    } finally {
+      setArchiving(false);
+    }
+  }
+
   async function handleDownloadVersion(v: DocumentVersionListItem, fmt: 'pdf' | 'txt') {
     setDownloadingId(`${v.id}-${fmt}`);
     try {
@@ -181,11 +203,25 @@ export default function DocumentDetailPage() {
         {statusBadge(doc.status)}
       </div>
 
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex items-center gap-2">
         <Link href="/documents">
           <Button variant="ghost" size="sm">← Back</Button>
         </Link>
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={archiving}
+          onClick={() => void handleToggleArchive()}
+        >
+          {doc.is_archived ? 'Restore' : 'Archive'}
+        </Button>
       </div>
+
+      {doc.is_archived && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+          This document is archived and hidden from the main library. Restore it to make it active again.
+        </div>
+      )}
 
       {doc.status === 'processing' && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">

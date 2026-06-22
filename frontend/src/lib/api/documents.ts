@@ -1,8 +1,9 @@
 import type { DocumentListResponse, DocumentResponse, DocumentStatsResponse, DocumentVersionListItem } from '@/types/api';
-import { apiDelete, apiGet, apiRequest, getToken } from './client';
+import { apiDelete, apiGet, apiPost, apiRequest, getToken } from './client';
 
-export function listDocuments(page = 1, pageSize = 20): Promise<DocumentListResponse> {
-  return apiGet<DocumentListResponse>(`/documents/?page=${page}&page_size=${pageSize}`);
+export function listDocuments(page = 1, pageSize = 20, archived = false): Promise<DocumentListResponse> {
+  const base = `/documents?page=${page}&page_size=${pageSize}`;
+  return apiGet<DocumentListResponse>(archived ? `${base}&archived=true` : base);
 }
 
 export function getDocument(id: string): Promise<DocumentResponse> {
@@ -18,6 +19,14 @@ export function uploadDocument(file: File, title?: string): Promise<DocumentResp
 
 export function deleteDocument(id: string): Promise<void> {
   return apiDelete<void>(`/documents/${id}`);
+}
+
+export function archiveDocument(id: string): Promise<DocumentResponse> {
+  return apiPost<DocumentResponse>(`/documents/${id}/archive`);
+}
+
+export function restoreDocument(id: string): Promise<DocumentResponse> {
+  return apiPost<DocumentResponse>(`/documents/${id}/restore`);
 }
 
 export function getDocumentStats(): Promise<DocumentStatsResponse> {

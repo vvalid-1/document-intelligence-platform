@@ -93,6 +93,7 @@ async def global_search(
     doc_q = select(Document.id, Document.title).where(
         Document.id.in_(doc_id_uuids),
         Document.is_deleted.is_(False),
+        Document.is_archived.is_(False),
         Document.status == "ready",
     )
     if current_user.role == "viewer":

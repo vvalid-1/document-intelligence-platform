@@ -389,13 +389,17 @@ async def list_documents(
     current_user: Annotated[User, Depends(get_current_user)],
     page: int = 1,
     page_size: int = 20,
+    archived: bool = False,
 ) -> DocumentListResponse:
     if page < 1:
         page = 1
     if page_size < 1 or page_size > 100:
         page_size = 20
 
-    base_q = select(Document).where(Document.is_deleted.is_(False))
+    base_q = select(Document).where(
+        Document.is_deleted.is_(False),
+        Document.is_archived.is_(archived),
+    )
     if current_user.role == "viewer":
         base_q = base_q.where(Document.owner_id == current_user.id)
 
@@ -423,7 +427,7 @@ async def get_document_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, int]:
-    base: list = [Document.is_deleted.is_(False)]
+    base: list = [Document.is_deleted.is_(False), Document.is_archived.is_(False)]
     if current_user.role == "viewer":
         base.append(Document.owner_id == current_user.id)
 
@@ -533,6 +537,58 @@ async def delete_document(
         request=request,
     )
     return Response(status_code=204)
+
+
+# ── Archive / Restore ─────────────────────────────────────────────────────────
+
+@router.post("/{document_id}/archive", response_model=DocumentResponse)
+async def archive_document(
+    document_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> DocumentResponse:
+    from datetime import UTC, datetime as dt
+
+    doc = await _get_doc_or_404(document_id, current_user, db)
+    if doc.is_archived:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Document is already archived")
+    doc.is_archived = True
+    doc.archived_at = dt.now(UTC)
+    await log_action(
+        db,
+        action="document.archive",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=doc.id,
+        request=request,
+    )
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.post("/{document_id}/restore", response_model=DocumentResponse)
+async def restore_document(
+    document_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> DocumentResponse:
+    doc = await _get_doc_or_404(document_id, current_user, db)
+    if not doc.is_archived:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Document is not archived")
+    doc.is_archived = False
+    doc.archived_at = None
+    await log_action(
+        db,
+        action="document.restore",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=doc.id,
+        request=request,
+    )
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
 
 
 # ── Download ──────────────────────────────────────────────────────────────────

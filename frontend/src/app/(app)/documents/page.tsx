@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { listDocuments, deleteDocument } from '@/lib/api/documents';
+import { listDocuments, deleteDocument, archiveDocument } from '@/lib/api/documents';
 import type { DocumentResponse } from '@/types/api';
 import { Button } from '@/components/ui/Button';
 import { statusBadge } from '@/components/ui/Badge';
@@ -22,6 +22,7 @@ export default function DocumentsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPoll() {
@@ -74,6 +75,19 @@ export default function DocumentsPage() {
       // ignore
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleArchive(id: string) {
+    if (!confirm('Archive this document? You can restore it later from the Archived page.')) return;
+    setArchivingId(id);
+    try {
+      await archiveDocument(id);
+      await load(page);
+    } catch {
+      // ignore
+    } finally {
+      setArchivingId(null);
     }
   }
 
@@ -131,6 +145,14 @@ export default function DocumentsPage() {
                       <Link href={`/documents/${doc.id}`}>
                         <Button variant="ghost" size="sm">View</Button>
                       </Link>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={archivingId === doc.id}
+                        onClick={() => void handleArchive(doc.id)}
+                      >
+                        Archive
+                      </Button>
                       <Button
                         variant="danger"
                         size="sm"

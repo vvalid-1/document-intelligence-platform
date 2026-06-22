@@ -17,6 +17,8 @@ class DocumentResponse(BaseModel):
     status: str
     processing_step: str | None
     error_message: str | None
+    is_archived: bool
+    archived_at: datetime | None
     owner_id: UUID | None
     created_at: datetime
     updated_at: datetime
