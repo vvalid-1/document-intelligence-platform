@@ -23,11 +23,27 @@ class DocumentResponse(BaseModel):
     is_deleted: bool
     deleted_at: datetime | None
     folder_id: UUID | None
+    media_duration_seconds: float | None
     owner_id: UUID | None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class MediaAnalysisResponse(BaseModel):
+    version_id: str
+    transcript: str
+    summary: str
+    key_topics: list[str]
+    action_items: list[str]
+    important_dates: list[str]
+    important_numbers: list[str]
+    duration_seconds: float | None
+    language: str | None
+    txt_path: str
+    pdf_path: str
+    created_at: datetime
 
 
 class BulkActionRequest(BaseModel):

@@ -51,6 +51,7 @@ class Document(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    media_duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     folder_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True, index=True
     )

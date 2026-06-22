@@ -7,22 +7,44 @@ from fastapi import HTTPException, UploadFile, status
 
 from app.core.config import settings
 
-# Extension → (allowed mime types, magic bytes)
+# Extension → (allowed mime types, magic bytes at offset 0)
+# MP4 is special: magic is "ftyp" at offset 4, handled separately below.
 _ALLOWED: dict[str, tuple[set[str], bytes]] = {
     ".pdf": ({"application/pdf", "application/x-pdf"}, b"%PDF"),
     ".docx": (
         {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip"},
         b"PK\x03\x04",
     ),
-    ".txt": ({"text/plain"}, b""),  # no magic bytes for txt
+    ".txt": ({"text/plain"}, b""),
     ".jpg": ({"image/jpeg"}, b"\xff\xd8\xff"),
     ".jpeg": ({"image/jpeg"}, b"\xff\xd8\xff"),
     ".png": ({"image/png"}, b"\x89PNG"),
+    # MP3: ID3 header (most common) or raw MPEG sync word
+    ".mp3": ({"audio/mpeg", "audio/mp3"}, b""),
+    # WAV: RIFF container
+    ".wav": ({"audio/wav", "audio/x-wav", "audio/wave"}, b"RIFF"),
+    # MP4: variable-length box; "ftyp" is at bytes 4-7 (checked separately)
+    ".mp4": ({"video/mp4", "video/mpeg"}, b""),
 }
+
+_MEDIA_EXTENSIONS = {".mp3", ".wav", ".mp4"}
 
 
 def _ext(filename: str) -> str:
     return Path(filename).suffix.lower()
+
+
+def _check_mp3_magic(header: bytes) -> bool:
+    """Accept ID3 tag or raw MPEG sync word."""
+    return (
+        header[:3] == b"ID3"
+        or header[:2] in {b"\xff\xfb", b"\xff\xf3", b"\xff\xf2", b"\xff\xfa"}
+    )
+
+
+def _check_mp4_magic(header: bytes) -> bool:
+    """MP4 ftyp box: bytes 4-7 must be 'ftyp'."""
+    return len(header) >= 8 and header[4:8] == b"ftyp"
 
 
 async def validate_upload(file: UploadFile) -> str:
@@ -34,18 +56,30 @@ async def validate_upload(file: UploadFile) -> str:
             detail=f"INVALID_FILE_TYPE: allowed extensions are {list(_ALLOWED)}",
         )
 
-    # Read the first 8 bytes for magic byte check without consuming the stream
     header = await file.read(8)
     await file.seek(0)
 
-    magic = _ALLOWED[ext][1]
-    if magic and not header.startswith(magic):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="INVALID_FILE_MAGIC: file header does not match declared type",
-        )
+    # Per-format magic byte checks
+    if ext == ".mp3":
+        if not _check_mp3_magic(header):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="INVALID_FILE_MAGIC: file header does not match declared type",
+            )
+    elif ext == ".mp4":
+        if not _check_mp4_magic(header):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="INVALID_FILE_MAGIC: file header does not match declared type",
+            )
+    else:
+        magic = _ALLOWED[ext][1]
+        if magic and not header.startswith(magic):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="INVALID_FILE_MAGIC: file header does not match declared type",
+            )
 
-    # Validate size by reading full content length
     content = await file.read()
     await file.seek(0)
     if len(content) > settings.max_file_size_bytes:

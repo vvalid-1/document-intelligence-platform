@@ -67,6 +67,7 @@ function buildTimeline(
     const isEdit = v.agent_name === 'editor';
     const isSig = v.agent_name === 'signature';
     const isTranslation = v.agent_name === 'translator';
+    const isMedia = v.agent_name === 'media_analysis';
     events.push({
       label: isEdit
         ? `Edit v${v.version_number} created`
@@ -74,10 +75,12 @@ function buildTimeline(
         ? `Signature applied (v${v.version_number})`
         : isTranslation
         ? (v.change_summary ?? `Translation v${v.version_number}`)
+        : isMedia
+        ? 'Media analysis completed'
         : `Version ${v.version_number} created`,
-      sublabel: isTranslation ? undefined : (v.change_summary ?? undefined),
+      sublabel: isTranslation || isMedia ? undefined : (v.change_summary ?? undefined),
       date: v.created_at,
-      icon: isEdit ? '✏️' : isSig ? '✍️' : isTranslation ? '🌐' : '📋',
+      icon: isEdit ? '✏️' : isSig ? '✍️' : isTranslation ? '🌐' : isMedia ? '🎙' : '📋',
     });
   }
 
@@ -216,12 +219,21 @@ export default function DocumentDetailPage() {
     return <div className="p-8 text-gray-500">Document not found.</div>;
   }
 
+  const isMedia =
+    doc.mime_type === 'audio/mpeg' ||
+    doc.mime_type === 'audio/wav' ||
+    doc.mime_type === 'video/mp4';
+
   const actions = [
-    { href: `/documents/${id}/chat`, label: 'Chat', desc: 'Ask questions about this document' },
-    { href: `/documents/${id}/review`, label: 'Review', desc: 'AI quality review and suggestions' },
-    { href: `/documents/${id}/edit`, label: 'Edit', desc: 'Natural language editing' },
-    { href: `/documents/${id}/translate`, label: 'Translate', desc: 'Translate to English, French, or Arabic' },
-    { href: `/documents/${id}/sign`, label: 'Sign', desc: 'Add electronic signature' },
+    ...(isMedia
+      ? [{ href: `/documents/${id}/media-analysis`, label: '🎙 Media Analysis', desc: 'Transcript, summary, action items' }]
+      : [
+          { href: `/documents/${id}/chat`, label: 'Chat', desc: 'Ask questions about this document' },
+          { href: `/documents/${id}/review`, label: 'Review', desc: 'AI quality review and suggestions' },
+          { href: `/documents/${id}/edit`, label: 'Edit', desc: 'Natural language editing' },
+          { href: `/documents/${id}/translate`, label: 'Translate', desc: 'Translate to English, French, or Arabic' },
+          { href: `/documents/${id}/sign`, label: 'Sign', desc: 'Add electronic signature' },
+        ]),
   ];
 
   const timeline = buildTimeline(doc, reviews, versions, sigs);

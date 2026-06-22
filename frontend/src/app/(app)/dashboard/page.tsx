@@ -17,6 +17,7 @@ const STAT_CARDS = [
   { key: 'favorites' as const, label: 'Starred', icon: '★', iconCls: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400', href: '/favorites' },
   { key: 'trash' as const, label: 'In trash', icon: '🗑', iconCls: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400', href: '/trash' },
   { key: 'folders' as const, label: 'Folders', icon: '📁', iconCls: 'bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400', href: '/folders' },
+  { key: 'media_analyses' as const, label: 'Media', icon: '🎙', iconCls: 'bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400', href: '/documents' },
 ] as const;
 
 type StatKey = typeof STAT_CARDS[number]['key'];
@@ -61,6 +62,7 @@ export default function DashboardPage() {
     favorites: stats?.favorites ?? 0,
     trash: stats?.trash ?? 0,
     folders: stats?.folders ?? 0,
+    media_analyses: stats?.media_analyses ?? 0,
   };
 
   return (
@@ -75,7 +77,7 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      <div className="mb-7 grid grid-cols-2 gap-4 xl:grid-cols-8">
+      <div className="mb-7 grid grid-cols-2 gap-4 xl:grid-cols-9">
         {STAT_CARDS.map(({ key, label, icon, iconCls, href }) => (
           <Link key={key} href={href} className="group">
             <Card>

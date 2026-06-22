@@ -13,7 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr-ara \
     poppler-utils \
     libgl1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /app/uploads/.whisper_cache && chown 1000:1000 /app/uploads/.whisper_cache
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

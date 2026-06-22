@@ -18,6 +18,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin, require_editor_or_admin, validate_sse_token
 from app.services.vector_service import delete_document_chunks, get_document_collection
+from app.services.transcription_service import transcribe_audio
 from app.models.document import Document, DocumentChunk, DocumentReview, DocumentVersion
 from app.models.user import User
 from app.models.folder import Folder
@@ -31,6 +32,7 @@ from app.schemas.document import (
     DocumentStatusResponse,
     DocumentUploadResponse,
     DocumentVersionResponse,
+    MediaAnalysisResponse,
     MoveRequest,
 )
 from app.services.audit_service import log_action
@@ -48,17 +50,23 @@ _MIME_MAP = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".png": "image/png",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".mp4": "video/mp4",
 }
 
 _IMAGE_MIMES = {"image/jpeg", "image/png"}
+_MEDIA_MIMES = {"audio/mpeg", "audio/wav", "video/mp4"}
 
 # Maps processing_step → approximate progress percent
 _STEP_PROGRESS: dict[str | None, int] = {
     "queued": 5,
     "extracting": 20,
     "ocr": 30,
+    "transcribing": 20,
     "chunking": 50,
     "embedding": 70,
+    "analyzing": 85,
 }
 
 
@@ -129,7 +137,120 @@ async def _process_document(
         page_count: Optional[int] = None
         doc_metadata: dict = {}
 
-        if mime == "application/pdf":
+        if mime in _MEDIA_MIMES:
+            # ── Media pipeline: transcribe → chunk transcript → embed → AI analysis ──
+            await _set(processing_step="transcribing")
+            transcription = await asyncio.to_thread(transcribe_audio, file_path)
+            transcript_text = transcription.text
+            duration = transcription.duration_seconds
+            language = transcription.language
+
+            doc_metadata = {
+                "word_count": len(transcript_text.split()),
+                "duration_seconds": duration,
+                "language": language,
+            }
+            chunks = chunk_plain_text(transcript_text, settings.CHUNK_SIZE, settings.CHUNK_OVERLAP)
+            await _set(
+                processing_step="chunking",
+                page_count=None,
+                doc_metadata=doc_metadata,
+                media_duration_seconds=duration,
+            )
+
+            if chunks:
+                collection = get_document_collection(chroma_client)
+                _BATCH = 50
+                all_embeddings_media: list[list[float]] = []
+                for batch_start in range(0, len(chunks), _BATCH):
+                    batch = chunks[batch_start : batch_start + _BATCH]
+                    batch_embeddings = await _embed([c.chunk_text for c in batch])
+                    all_embeddings_media.extend(batch_embeddings)
+                    done = batch_start + len(batch)
+                    await _set(processing_step=f"embedding chunk {done}/{len(chunks)}")
+
+                chroma_ids = [f"{document_id}_{c.chunk_index}" for c in chunks]
+                created_str = created_at.isoformat() if created_at else ""
+                collection.add(
+                    ids=chroma_ids,
+                    embeddings=all_embeddings_media,
+                    documents=[c.chunk_text for c in chunks],
+                    metadatas=[
+                        {
+                            "document_id": str(document_id),
+                            "document_title": title,
+                            "mime_type": mime,
+                            "page_number": -1,
+                            "chunk_index": c.chunk_index,
+                            "owner_id": str(owner_id) if owner_id else "",
+                            "created_at": created_str,
+                        }
+                        for c in chunks
+                    ],
+                )
+
+                async with AsyncSession(engine, expire_on_commit=False) as sess:
+                    async with sess.begin():
+                        for chunk, chroma_id in zip(chunks, chroma_ids):
+                            sess.add(
+                                DocumentChunk(
+                                    document_id=document_id,
+                                    chroma_chunk_id=chroma_id,
+                                    chunk_index=chunk.chunk_index,
+                                    page_number=None,
+                                    chunk_text=chunk.chunk_text,
+                                    token_count=chunk.token_count,
+                                )
+                            )
+
+            # AI analysis (only when there's a transcript and an owner)
+            if transcript_text and owner_id:
+                await _set(processing_step="analyzing")
+                from app.agents.media_agent import MediaAnalysisAgent
+                from app.agents.base import TaskPayload as _TaskPayload
+                from app.models.agent import AgentSession
+
+                async with AsyncSession(engine, expire_on_commit=False) as sess:
+                    async with sess.begin():
+                        session_obj = AgentSession(
+                            user_id=owner_id,
+                            session_name=f"media_analysis:{document_id}",
+                            is_active=False,
+                        )
+                        sess.add(session_obj)
+                        await sess.flush()
+
+                        payload = _TaskPayload(
+                            task_type="media_analysis",
+                            session_id=session_obj.id,
+                            user_id=owner_id,
+                            document_id=document_id,
+                            input_data={
+                                "transcript": transcript_text,
+                                "user_id": str(owner_id),
+                                "duration_seconds": duration,
+                                "language": language,
+                            },
+                        )
+                        agent = MediaAnalysisAgent()
+                        analysis_result = await agent.run(payload, sess)
+                        if not analysis_result.success:
+                            logger.warning(
+                                "Media analysis failed for doc %s: %s",
+                                document_id,
+                                analysis_result.error,
+                            )
+
+            await _set(
+                status="ready",
+                processing_step=None,
+                chunk_count=len(chunks),
+                error_message=None,
+            )
+            logger.info("Media document %s processed: %d chunks, %.1f s", document_id, len(chunks), duration)
+            return
+
+        elif mime == "application/pdf":
             pages = extract_text_pdf(file_path)
             meta = extract_pdf_metadata(file_path)
             page_count = meta.pop("page_count", None)
@@ -486,6 +607,11 @@ async def get_document_stats(
         folder_q = folder_q.where(Folder.owner_id == current_user.id)
     folders_count = await _count(folder_q)
 
+    media_q = select(func.count(DocumentVersion.id)).join(
+        Document, DocumentVersion.document_id == Document.id
+    ).where(*base, DocumentVersion.agent_name == "media_analysis")
+    media_analyses = await _count(media_q)
+
     return {
         "total": total,
         "ready": ready,
@@ -495,6 +621,7 @@ async def get_document_stats(
         "favorites": favorites,
         "trash": trash,
         "folders": folders_count,
+        "media_analyses": media_analyses,
     }
 
 
@@ -1054,4 +1181,167 @@ async def summarize_document(
         chunk_count=result.output_data["chunk_count"],
         token_count=result.token_count,
         task_id=uuid.UUID(result.output_data["task_id"]),
+    )
+
+
+# ── Media Analysis ────────────────────────────────────────────────────────────
+
+@router.get("/{document_id}/media-analysis", response_model=MediaAnalysisResponse)
+async def get_media_analysis(
+    document_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> MediaAnalysisResponse:
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    if doc.mime_type not in _MEDIA_MIMES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Document is not a media file (MP3/WAV/MP4)",
+        )
+
+    res = await db.execute(
+        select(DocumentVersion)
+        .where(
+            DocumentVersion.document_id == document_id,
+            DocumentVersion.agent_name == "media_analysis",
+        )
+        .order_by(DocumentVersion.version_number.desc())
+        .limit(1)
+    )
+    version = res.scalar_one_or_none()
+
+    if version is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Media analysis not yet available — document may still be processing",
+        )
+
+    meta: dict = version.version_metadata or {}
+    return MediaAnalysisResponse(
+        version_id=str(version.id),
+        transcript=meta.get("transcript", ""),
+        summary=meta.get("summary", ""),
+        key_topics=meta.get("key_topics", []),
+        action_items=meta.get("action_items", []),
+        important_dates=meta.get("important_dates", []),
+        important_numbers=meta.get("important_numbers", []),
+        duration_seconds=meta.get("duration_seconds"),
+        language=meta.get("language"),
+        txt_path=meta.get("txt_path", ""),
+        pdf_path=meta.get("pdf_path", ""),
+        created_at=version.created_at,
+    )
+
+
+@router.post("/{document_id}/media-analysis", response_model=MediaAnalysisResponse)
+async def retrigger_media_analysis(
+    document_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> MediaAnalysisResponse:
+    """Re-run AI analysis on an existing transcript (does not re-transcribe)."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    if doc.mime_type not in _MEDIA_MIMES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Document is not a media file (MP3/WAV/MP4)",
+        )
+
+    if doc.status != "ready":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Document is not ready (status={doc.status})",
+        )
+
+    # Find existing transcript from the last media_analysis version
+    res = await db.execute(
+        select(DocumentVersion)
+        .where(
+            DocumentVersion.document_id == document_id,
+            DocumentVersion.agent_name == "media_analysis",
+        )
+        .order_by(DocumentVersion.version_number.desc())
+        .limit(1)
+    )
+    existing = res.scalar_one_or_none()
+
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No previous media analysis found — upload the file again to trigger transcription",
+        )
+
+    meta: dict = existing.version_metadata or {}
+    transcript = meta.get("transcript", "")
+    if not transcript:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No transcript found in existing analysis",
+        )
+
+    from app.agents.media_agent import MediaAnalysisAgent
+    from app.agents.base import TaskPayload
+    from app.models.agent import AgentSession
+
+    session_obj = AgentSession(
+        user_id=current_user.id,
+        session_name=f"media_reanalysis:{document_id}",
+        is_active=False,
+    )
+    db.add(session_obj)
+    await db.flush()
+
+    payload = TaskPayload(
+        task_type="media_analysis",
+        session_id=session_obj.id,
+        user_id=current_user.id,
+        document_id=document_id,
+        input_data={
+            "transcript": transcript,
+            "user_id": str(current_user.id),
+            "duration_seconds": meta.get("duration_seconds"),
+            "language": meta.get("language"),
+        },
+    )
+    agent = MediaAnalysisAgent()
+    result = await agent.run(payload, db)
+
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result.error or "Media analysis failed",
+        )
+
+    await log_action(
+        db,
+        action="document.media_reanalysis",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document_id,
+        request=request,
+    )
+
+    out = result.output_data
+    # Fetch the newly created version's created_at
+    ver_res = await db.execute(
+        select(DocumentVersion).where(DocumentVersion.id == uuid.UUID(out["version_id"]))
+    )
+    new_version = ver_res.scalar_one()
+
+    return MediaAnalysisResponse(
+        version_id=out["version_id"],
+        transcript=transcript,
+        summary=out.get("summary", ""),
+        key_topics=out.get("key_topics", []),
+        action_items=out.get("action_items", []),
+        important_dates=out.get("important_dates", []),
+        important_numbers=out.get("important_numbers", []),
+        duration_seconds=out.get("duration_seconds"),
+        language=out.get("language"),
+        txt_path=out.get("txt_path", ""),
+        pdf_path=out.get("pdf_path", ""),
+        created_at=new_version.created_at,
     )

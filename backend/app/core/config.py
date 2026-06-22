@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 100
 
+    # ── Whisper (speech-to-text) ──────────────────────────────────────────────
+    WHISPER_MODEL: str = "base"
+    WHISPER_DEVICE: str = "cpu"
+    WHISPER_COMPUTE_TYPE: str = "int8"
+    WHISPER_CACHE_DIR: str = "/app/uploads/.whisper_cache"
+    WHISPER_TIMEOUT_SECONDS: int = 1800
+    OLLAMA_MEDIA_MODEL: str = "qwen2.5:3b"
+
     # ── Security ──────────────────────────────────────────────────────────────
     # Stored as comma-separated string; use cors_origins property for a list
     CORS_ALLOWED_ORIGINS: str = "http://localhost,http://localhost:80"

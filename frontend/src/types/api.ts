@@ -30,6 +30,7 @@ export interface DocumentResponse {
   is_deleted: boolean;
   deleted_at: string | null;
   folder_id: string | null;
+  media_duration_seconds: number | null;
   page_count: number | null;
   chunk_count: number;
   owner_id: string;
@@ -53,6 +54,22 @@ export interface DocumentStatsResponse {
   favorites: number;
   trash: number;
   folders: number;
+  media_analyses: number;
+}
+
+export interface MediaAnalysisResponse {
+  version_id: string;
+  transcript: string;
+  summary: string;
+  key_topics: string[];
+  action_items: string[];
+  important_dates: string[];
+  important_numbers: string[];
+  duration_seconds: number | null;
+  language: string | null;
+  txt_path: string;
+  pdf_path: string;
+  created_at: string;
 }
 
 export interface FolderResponse {
