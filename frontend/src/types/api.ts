@@ -184,6 +184,28 @@ export interface TranslationResponse {
   created_at: string;
 }
 
+export interface SearchHit {
+  chunk_index: number;
+  page_number: number | null;
+  excerpt: string;
+  similarity: number;
+}
+
+export interface SearchGroup {
+  document_id: string;
+  document_title: string;
+  match_count: number;
+  best_similarity: number;
+  hits: SearchHit[];
+}
+
+export interface SearchResponse {
+  query: string;
+  total_hits: number;
+  total_documents: number;
+  groups: SearchGroup[];
+}
+
 export interface ApiError {
   detail: string;
 }

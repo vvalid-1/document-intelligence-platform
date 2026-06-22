@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: '⊞' },
   { href: '/documents', label: 'Documents', icon: '⎙' },
+  { href: '/search', label: 'Search', icon: '⌕' },
   { href: '/documents/upload', label: 'Upload', icon: '↑' },
 ];
 
