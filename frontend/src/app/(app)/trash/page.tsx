@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { listDocuments, restoreDocument } from '@/lib/api/documents';
+import { listDocuments, permanentDeleteDocument, untrashDocument } from '@/lib/api/documents';
 import type { DocumentResponse } from '@/types/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -17,17 +17,17 @@ function fmtDate(s: string) {
   return new Date(s).toLocaleDateString();
 }
 
-export default function ArchivedPage() {
+export default function TrashPage() {
   const [docs, setDocs] = useState<DocumentResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   async function load(p: number, silent = false) {
     if (!silent) setLoading(true);
     try {
-      const r = await listDocuments(p, 20, { archived: true });
+      const r = await listDocuments(p, 20, { trashed: true });
       setDocs(r.items);
       setTotal(r.total);
     } catch {
@@ -43,15 +43,27 @@ export default function ArchivedPage() {
   }, [page]);
 
   async function handleRestore(id: string) {
-    if (!confirm('Restore this document to your active library?')) return;
-    setRestoringId(id);
+    setActionId(id);
     try {
-      await restoreDocument(id);
+      await untrashDocument(id);
       await load(page, true);
     } catch {
       // ignore
     } finally {
-      setRestoringId(null);
+      setActionId(null);
+    }
+  }
+
+  async function handlePermanentDelete(id: string) {
+    if (!confirm('Permanently delete this document? This cannot be undone.')) return;
+    setActionId(id);
+    try {
+      await permanentDeleteDocument(id);
+      await load(page, true);
+    } catch {
+      // ignore
+    } finally {
+      setActionId(null);
     }
   }
 
@@ -61,13 +73,19 @@ export default function ArchivedPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Archived Documents</h1>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{total} archived</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Trash</h1>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{total} in trash</p>
         </div>
         <Link href="/documents">
           <Button variant="secondary">← Active library</Button>
         </Link>
       </div>
+
+      {total > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+          Documents in trash can be restored or permanently deleted by an admin.
+        </div>
+      )}
 
       <Card padding={false}>
         {loading ? (
@@ -76,14 +94,10 @@ export default function ArchivedPage() {
           </div>
         ) : docs.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-2xl mb-3">📦</p>
-            <p className="font-medium text-gray-700 dark:text-slate-300">No archived documents</p>
+            <p className="text-3xl mb-3">🗑</p>
+            <p className="font-medium text-gray-700 dark:text-slate-300">Trash is empty</p>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              Archive documents from the{' '}
-              <Link href="/documents" className="text-blue-600 hover:underline dark:text-blue-400">
-                Documents page
-              </Link>{' '}
-              to keep them out of your active library.
+              Deleted documents will appear here.
             </p>
           </div>
         ) : (
@@ -93,7 +107,7 @@ export default function ArchivedPage() {
                 <th className="px-6 py-3 text-left">Document</th>
                 <th className="px-6 py-3 text-left">Type</th>
                 <th className="px-6 py-3 text-left">Size</th>
-                <th className="px-6 py-3 text-left">Archived</th>
+                <th className="px-6 py-3 text-left">Deleted</th>
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -101,12 +115,7 @@ export default function ArchivedPage() {
               {docs.map((doc) => (
                 <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
                   <td className="px-6 py-3">
-                    <Link
-                      href={`/documents/${doc.id}`}
-                      className="font-medium text-gray-900 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400"
-                    >
-                      {doc.title}
-                    </Link>
+                    <p className="font-medium text-gray-900 dark:text-slate-100">{doc.title}</p>
                     <p className="text-xs text-gray-400 dark:text-slate-500">{doc.original_name}</p>
                   </td>
                   <td className="px-6 py-3 text-gray-500 dark:text-slate-400">
@@ -114,16 +123,24 @@ export default function ArchivedPage() {
                   </td>
                   <td className="px-6 py-3 text-gray-500 dark:text-slate-400">{fileSize(doc.file_size_bytes)}</td>
                   <td className="px-6 py-3 text-gray-500 dark:text-slate-400">
-                    {doc.archived_at ? fmtDate(doc.archived_at) : '—'}
+                    {doc.deleted_at ? fmtDate(doc.deleted_at) : '—'}
                   </td>
-                  <td className="px-6 py-3 text-right">
+                  <td className="px-6 py-3 text-right flex items-center justify-end gap-2">
                     <Button
                       variant="secondary"
                       size="sm"
-                      loading={restoringId === doc.id}
+                      loading={actionId === doc.id}
                       onClick={() => void handleRestore(doc.id)}
                     >
                       Restore
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      loading={actionId === doc.id}
+                      onClick={() => void handlePermanentDelete(doc.id)}
+                    >
+                      Delete forever
                     </Button>
                   </td>
                 </tr>

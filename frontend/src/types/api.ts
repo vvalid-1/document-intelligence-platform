@@ -26,9 +26,11 @@ export interface DocumentResponse {
   error_message: string | null;
   is_archived: boolean;
   archived_at: string | null;
+  is_favorite: boolean;
+  is_deleted: boolean;
+  deleted_at: string | null;
   page_count: number | null;
   chunk_count: number;
-  is_deleted: boolean;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -47,6 +49,8 @@ export interface DocumentStatsResponse {
   reviews: number;
   edits: number;
   signatures: number;
+  favorites: number;
+  trash: number;
 }
 
 export interface Source {

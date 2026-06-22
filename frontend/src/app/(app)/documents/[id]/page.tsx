@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getDocument, downloadVersion, listVersions, archiveDocument, restoreDocument } from '@/lib/api/documents';
+import { getDocument, downloadVersion, listVersions, archiveDocument, restoreDocument, favoriteDocument, unfavoriteDocument } from '@/lib/api/documents';
 import { listSignatures } from '@/lib/api/signatures';
 import { listReviews } from '@/lib/api/reviews';
 import type {
@@ -91,6 +91,7 @@ export default function DocumentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
+  const [starring, setStarring] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function stopPoll() {
@@ -160,6 +161,19 @@ export default function DocumentDetailPage() {
     }
   }
 
+  async function handleToggleStar() {
+    if (!doc) return;
+    setStarring(true);
+    try {
+      const updated = doc.is_favorite ? await unfavoriteDocument(id) : await favoriteDocument(id);
+      setDoc(updated);
+    } catch {
+      // ignore
+    } finally {
+      setStarring(false);
+    }
+  }
+
   async function handleDownloadVersion(v: DocumentVersionListItem, fmt: 'pdf' | 'txt') {
     setDownloadingId(`${v.id}-${fmt}`);
     try {
@@ -207,6 +221,18 @@ export default function DocumentDetailPage() {
         <Link href="/documents">
           <Button variant="ghost" size="sm">← Back</Button>
         </Link>
+        <button
+          onClick={() => void handleToggleStar()}
+          disabled={starring}
+          className={`text-xl leading-none transition-colors px-1 ${
+            doc.is_favorite
+              ? 'text-amber-400 hover:text-amber-500'
+              : 'text-gray-300 hover:text-amber-400 dark:text-slate-600'
+          }`}
+          title={doc.is_favorite ? 'Unstar' : 'Star'}
+        >
+          ★
+        </button>
         <Button
           variant="secondary"
           size="sm"

@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/Button';
 import { statusBadge } from '@/components/ui/Badge';
 
 const STAT_CARDS = [
-  { key: 'total' as const, label: 'Total documents', icon: '⎙', iconCls: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
-  { key: 'ready' as const, label: 'Ready', icon: '✓', iconCls: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  { key: 'reviews' as const, label: 'Reviews done', icon: '🔍', iconCls: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
-  { key: 'edits' as const, label: 'Edits created', icon: '✏', iconCls: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
-  { key: 'signatures' as const, label: 'Signatures', icon: '✍', iconCls: 'bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400' },
+  { key: 'total' as const, label: 'Total documents', icon: '⎙', iconCls: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400', href: '/documents' },
+  { key: 'ready' as const, label: 'Ready', icon: '✓', iconCls: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400', href: '/documents' },
+  { key: 'reviews' as const, label: 'Reviews done', icon: '🔍', iconCls: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400', href: '/documents' },
+  { key: 'edits' as const, label: 'Edits created', icon: '✏', iconCls: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400', href: '/documents' },
+  { key: 'signatures' as const, label: 'Signatures', icon: '✍', iconCls: 'bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400', href: '/documents' },
+  { key: 'favorites' as const, label: 'Starred', icon: '★', iconCls: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400', href: '/favorites' },
+  { key: 'trash' as const, label: 'In trash', icon: '🗑', iconCls: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400', href: '/trash' },
 ] as const;
 
 type StatKey = typeof STAT_CARDS[number]['key'];
@@ -55,6 +57,8 @@ export default function DashboardPage() {
     reviews: stats?.reviews ?? 0,
     edits: stats?.edits ?? 0,
     signatures: stats?.signatures ?? 0,
+    favorites: stats?.favorites ?? 0,
+    trash: stats?.trash ?? 0,
   };
 
   return (
@@ -69,21 +73,23 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      <div className="mb-7 grid grid-cols-2 gap-4 xl:grid-cols-5">
-        {STAT_CARDS.map(({ key, label, icon, iconCls }) => (
-          <Card key={key}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-slate-400">{label}</p>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-100">
-                  {loading ? '—' : statValues[key]}
-                </p>
+      <div className="mb-7 grid grid-cols-2 gap-4 xl:grid-cols-7">
+        {STAT_CARDS.map(({ key, label, icon, iconCls, href }) => (
+          <Link key={key} href={href} className="group">
+            <Card>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 group-hover:text-gray-700 dark:group-hover:text-slate-300">{label}</p>
+                  <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-100">
+                    {loading ? '—' : statValues[key]}
+                  </p>
+                </div>
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-semibold ${iconCls}`}>
+                  {icon}
+                </div>
               </div>
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-semibold ${iconCls}`}>
-                {icon}
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </Link>
         ))}
       </div>
 

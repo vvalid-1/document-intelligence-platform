@@ -16,10 +16,13 @@ from sqlalchemy.pool import NullPool
 from sse_starlette.sse import EventSourceResponse
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_editor_or_admin, validate_sse_token
+from app.core.deps import get_current_user, require_admin, require_editor_or_admin, validate_sse_token
+from app.services.vector_service import delete_document_chunks, get_document_collection
 from app.models.document import Document, DocumentChunk, DocumentReview, DocumentVersion
 from app.models.user import User
 from app.schemas.document import (
+    BulkActionRequest,
+    BulkFavoriteRequest,
     DocumentListResponse,
     DocumentPatchRequest,
     DocumentResponse,
@@ -390,16 +393,24 @@ async def list_documents(
     page: int = 1,
     page_size: int = 20,
     archived: bool = False,
+    favorite: bool = False,
+    trashed: bool = False,
 ) -> DocumentListResponse:
     if page < 1:
         page = 1
     if page_size < 1 or page_size > 100:
         page_size = 20
 
-    base_q = select(Document).where(
-        Document.is_deleted.is_(False),
-        Document.is_archived.is_(archived),
-    )
+    if trashed:
+        base_q = select(Document).where(Document.is_deleted.is_(True))
+    else:
+        base_q = select(Document).where(
+            Document.is_deleted.is_(False),
+            Document.is_archived.is_(archived),
+        )
+        if favorite:
+            base_q = base_q.where(Document.is_favorite.is_(True))
+
     if current_user.role == "viewer":
         base_q = base_q.where(Document.owner_id == current_user.id)
 
@@ -451,7 +462,133 @@ async def get_document_stats(
         .where(*base)
     )
 
-    return {"total": total, "ready": ready, "reviews": reviews, "edits": edits, "signatures": signatures}
+    viewer_filter = [Document.owner_id == current_user.id] if current_user.role == "viewer" else []
+    favorites = await _count(
+        select(func.count(Document.id)).where(
+            Document.is_deleted.is_(False),
+            Document.is_archived.is_(False),
+            Document.is_favorite.is_(True),
+            *viewer_filter,
+        )
+    )
+    trash = await _count(
+        select(func.count(Document.id)).where(Document.is_deleted.is_(True), *viewer_filter)
+    )
+
+    return {
+        "total": total,
+        "ready": ready,
+        "reviews": reviews,
+        "edits": edits,
+        "signatures": signatures,
+        "favorites": favorites,
+        "trash": trash,
+    }
+
+
+# ── Bulk actions ─────────────────────────────────────────────────────────────
+# Routes defined here (before /{document_id}/…) so "bulk" is not parsed as a UUID.
+
+@router.post("/bulk/archive", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def bulk_archive_documents(
+    body: BulkActionRequest,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> Response:
+    from datetime import UTC, datetime as dt
+
+    q = update(Document).where(
+        Document.id.in_(body.ids),
+        Document.is_deleted.is_(False),
+        Document.is_archived.is_(False),
+    )
+    if current_user.role == "viewer":
+        q = q.where(Document.owner_id == current_user.id)
+    await db.execute(q.values(is_archived=True, archived_at=dt.now(UTC)))
+    await log_action(
+        db,
+        action="document.bulk_archive",
+        user_id=current_user.id,
+        details={"count": len(body.ids)},
+        request=request,
+    )
+    return Response(status_code=204)
+
+
+@router.post("/bulk/restore", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def bulk_restore_documents(
+    body: BulkActionRequest,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> Response:
+    q = update(Document).where(
+        Document.id.in_(body.ids),
+        Document.is_deleted.is_(False),
+        Document.is_archived.is_(True),
+    )
+    if current_user.role == "viewer":
+        q = q.where(Document.owner_id == current_user.id)
+    await db.execute(q.values(is_archived=False, archived_at=None))
+    await log_action(
+        db,
+        action="document.bulk_restore",
+        user_id=current_user.id,
+        details={"count": len(body.ids)},
+        request=request,
+    )
+    return Response(status_code=204)
+
+
+@router.post("/bulk/trash", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def bulk_trash_documents(
+    body: BulkActionRequest,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> Response:
+    from datetime import UTC, datetime as dt
+
+    q = update(Document).where(
+        Document.id.in_(body.ids),
+        Document.is_deleted.is_(False),
+    )
+    if current_user.role == "viewer":
+        q = q.where(Document.owner_id == current_user.id)
+    await db.execute(q.values(is_deleted=True, deleted_at=dt.now(UTC)))
+    await log_action(
+        db,
+        action="document.bulk_trash",
+        user_id=current_user.id,
+        details={"count": len(body.ids)},
+        request=request,
+    )
+    return Response(status_code=204)
+
+
+@router.post("/bulk/favorite", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def bulk_favorite_documents(
+    body: BulkFavoriteRequest,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Response:
+    q = update(Document).where(
+        Document.id.in_(body.ids),
+        Document.is_deleted.is_(False),
+    )
+    if current_user.role == "viewer":
+        q = q.where(Document.owner_id == current_user.id)
+    await db.execute(q.values(is_favorite=body.value))
+    await log_action(
+        db,
+        action="document.bulk_favorite",
+        user_id=current_user.id,
+        details={"count": len(body.ids), "value": body.value},
+        request=request,
+    )
+    return Response(status_code=204)
 
 
 # ── Detail ────────────────────────────────────────────────────────────────────
@@ -501,7 +638,7 @@ async def patch_document(
     return DocumentResponse.model_validate(doc)
 
 
-# ── Soft delete ───────────────────────────────────────────────────────────────
+# ── Move to Trash ─────────────────────────────────────────────────────────────
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_document(
@@ -511,26 +648,13 @@ async def delete_document(
     current_user: Annotated[User, Depends(require_editor_or_admin)],
 ) -> Response:
     from datetime import UTC, datetime
-    from app.services.vector_service import delete_document_chunks, get_document_collection
 
     doc = await _get_doc_or_404(document_id, current_user, db)
-
-    # Architecture rule #10: delete ChromaDB FIRST, abort if it fails
-    try:
-        collection = await asyncio.to_thread(get_document_collection)
-        await asyncio.to_thread(delete_document_chunks, collection, str(document_id))
-    except Exception as exc:
-        logger.error("ChromaDB deletion failed for doc %s: %s", document_id, exc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Failed to delete document embeddings — deletion aborted",
-        )
-
     doc.is_deleted = True
     doc.deleted_at = datetime.now(UTC)
     await log_action(
         db,
-        action="document.delete",
+        action="document.trash",
         user_id=current_user.id,
         resource_type="document",
         resource_id=doc.id,
@@ -589,6 +713,120 @@ async def restore_document(
     )
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
+
+
+# ── Favorite / Unfavorite ─────────────────────────────────────────────────────
+
+@router.post("/{document_id}/favorite", response_model=DocumentResponse)
+async def favorite_document(
+    document_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> DocumentResponse:
+    doc = await _get_doc_or_404(document_id, current_user, db)
+    if doc.is_favorite:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Document is already starred")
+    doc.is_favorite = True
+    await log_action(
+        db,
+        action="document.favorite",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=doc.id,
+        request=request,
+    )
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.post("/{document_id}/unfavorite", response_model=DocumentResponse)
+async def unfavorite_document(
+    document_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> DocumentResponse:
+    doc = await _get_doc_or_404(document_id, current_user, db)
+    if not doc.is_favorite:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Document is not starred")
+    doc.is_favorite = False
+    await log_action(
+        db,
+        action="document.unfavorite",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=doc.id,
+        request=request,
+    )
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+# ── Untrash (restore from trash) ──────────────────────────────────────────────
+
+@router.post("/{document_id}/untrash", response_model=DocumentResponse)
+async def untrash_document(
+    document_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_admin)],
+) -> DocumentResponse:
+    res = await db.execute(
+        select(Document).where(Document.id == document_id, Document.is_deleted.is_(True))
+    )
+    doc = res.scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found in trash")
+    doc.is_deleted = False
+    doc.deleted_at = None
+    await log_action(
+        db,
+        action="document.untrash",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=doc.id,
+        request=request,
+    )
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+# ── Permanent delete (admin only) ─────────────────────────────────────────────
+
+@router.delete("/{document_id}/permanent", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def permanent_delete_document(
+    document_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_admin)],
+) -> Response:
+    res = await db.execute(select(Document).where(Document.id == document_id))
+    doc = res.scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    # Architecture rule #10: delete ChromaDB FIRST
+    try:
+        collection = await asyncio.to_thread(get_document_collection)
+        await asyncio.to_thread(delete_document_chunks, collection, str(document_id))
+    except Exception as exc:
+        logger.error("ChromaDB deletion failed for doc %s: %s", document_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to delete document embeddings — deletion aborted",
+        )
+
+    await log_action(
+        db,
+        action="document.permanent_delete",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document_id,
+        request=request,
+    )
+    await db.delete(doc)
+    return Response(status_code=204)
 
 
 # ── Download ──────────────────────────────────────────────────────────────────

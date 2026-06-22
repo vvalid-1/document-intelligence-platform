@@ -19,11 +19,23 @@ class DocumentResponse(BaseModel):
     error_message: str | None
     is_archived: bool
     archived_at: datetime | None
+    is_favorite: bool
+    is_deleted: bool
+    deleted_at: datetime | None
     owner_id: UUID | None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class BulkActionRequest(BaseModel):
+    ids: list[UUID] = Field(min_length=1, max_length=50)
+
+
+class BulkFavoriteRequest(BaseModel):
+    ids: list[UUID] = Field(min_length=1, max_length=50)
+    value: bool
 
 
 class DocumentListResponse(BaseModel):

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { listDocuments, restoreDocument } from '@/lib/api/documents';
+import { listDocuments, unfavoriteDocument } from '@/lib/api/documents';
 import type { DocumentResponse } from '@/types/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -17,17 +17,17 @@ function fmtDate(s: string) {
   return new Date(s).toLocaleDateString();
 }
 
-export default function ArchivedPage() {
+export default function FavoritesPage() {
   const [docs, setDocs] = useState<DocumentResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [unstarringId, setUnstarringId] = useState<string | null>(null);
 
   async function load(p: number, silent = false) {
     if (!silent) setLoading(true);
     try {
-      const r = await listDocuments(p, 20, { archived: true });
+      const r = await listDocuments(p, 20, { favorite: true });
       setDocs(r.items);
       setTotal(r.total);
     } catch {
@@ -42,16 +42,15 @@ export default function ArchivedPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  async function handleRestore(id: string) {
-    if (!confirm('Restore this document to your active library?')) return;
-    setRestoringId(id);
+  async function handleUnstar(id: string) {
+    setUnstarringId(id);
     try {
-      await restoreDocument(id);
+      await unfavoriteDocument(id);
       await load(page, true);
     } catch {
       // ignore
     } finally {
-      setRestoringId(null);
+      setUnstarringId(null);
     }
   }
 
@@ -61,11 +60,11 @@ export default function ArchivedPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Archived Documents</h1>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{total} archived</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Starred Documents</h1>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-slate-400">{total} starred</p>
         </div>
         <Link href="/documents">
-          <Button variant="secondary">← Active library</Button>
+          <Button variant="secondary">← All Documents</Button>
         </Link>
       </div>
 
@@ -76,14 +75,14 @@ export default function ArchivedPage() {
           </div>
         ) : docs.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-2xl mb-3">📦</p>
-            <p className="font-medium text-gray-700 dark:text-slate-300">No archived documents</p>
+            <p className="text-3xl mb-3">★</p>
+            <p className="font-medium text-gray-700 dark:text-slate-300">No starred documents</p>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              Archive documents from the{' '}
+              Star documents from the{' '}
               <Link href="/documents" className="text-blue-600 hover:underline dark:text-blue-400">
                 Documents page
               </Link>{' '}
-              to keep them out of your active library.
+              to find them quickly.
             </p>
           </div>
         ) : (
@@ -93,7 +92,7 @@ export default function ArchivedPage() {
                 <th className="px-6 py-3 text-left">Document</th>
                 <th className="px-6 py-3 text-left">Type</th>
                 <th className="px-6 py-3 text-left">Size</th>
-                <th className="px-6 py-3 text-left">Archived</th>
+                <th className="px-6 py-3 text-left">Added</th>
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -113,17 +112,15 @@ export default function ArchivedPage() {
                     {doc.mime_type.split('/').pop()?.toUpperCase() ?? '—'}
                   </td>
                   <td className="px-6 py-3 text-gray-500 dark:text-slate-400">{fileSize(doc.file_size_bytes)}</td>
-                  <td className="px-6 py-3 text-gray-500 dark:text-slate-400">
-                    {doc.archived_at ? fmtDate(doc.archived_at) : '—'}
-                  </td>
+                  <td className="px-6 py-3 text-gray-500 dark:text-slate-400">{fmtDate(doc.created_at)}</td>
                   <td className="px-6 py-3 text-right">
                     <Button
                       variant="secondary"
                       size="sm"
-                      loading={restoringId === doc.id}
-                      onClick={() => void handleRestore(doc.id)}
+                      loading={unstarringId === doc.id}
+                      onClick={() => void handleUnstar(doc.id)}
                     >
-                      Restore
+                      Unstar
                     </Button>
                   </td>
                 </tr>

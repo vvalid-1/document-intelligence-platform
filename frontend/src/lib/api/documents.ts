@@ -1,9 +1,15 @@
 import type { DocumentListResponse, DocumentResponse, DocumentStatsResponse, DocumentVersionListItem } from '@/types/api';
 import { apiDelete, apiGet, apiPost, apiRequest, getToken } from './client';
 
-export function listDocuments(page = 1, pageSize = 20, archived = false): Promise<DocumentListResponse> {
+type ListDocumentsOpts = { archived?: boolean; favorite?: boolean; trashed?: boolean };
+
+export function listDocuments(page = 1, pageSize = 20, opts: ListDocumentsOpts = {}): Promise<DocumentListResponse> {
   const base = `/documents?page=${page}&page_size=${pageSize}`;
-  return apiGet<DocumentListResponse>(archived ? `${base}&archived=true` : base);
+  const params: string[] = [];
+  if (opts.archived) params.push('archived=true');
+  if (opts.favorite) params.push('favorite=true');
+  if (opts.trashed) params.push('trashed=true');
+  return apiGet<DocumentListResponse>(params.length ? `${base}&${params.join('&')}` : base);
 }
 
 export function getDocument(id: string): Promise<DocumentResponse> {
@@ -27,6 +33,38 @@ export function archiveDocument(id: string): Promise<DocumentResponse> {
 
 export function restoreDocument(id: string): Promise<DocumentResponse> {
   return apiPost<DocumentResponse>(`/documents/${id}/restore`);
+}
+
+export function favoriteDocument(id: string): Promise<DocumentResponse> {
+  return apiPost<DocumentResponse>(`/documents/${id}/favorite`);
+}
+
+export function unfavoriteDocument(id: string): Promise<DocumentResponse> {
+  return apiPost<DocumentResponse>(`/documents/${id}/unfavorite`);
+}
+
+export function untrashDocument(id: string): Promise<DocumentResponse> {
+  return apiPost<DocumentResponse>(`/documents/${id}/untrash`);
+}
+
+export function permanentDeleteDocument(id: string): Promise<void> {
+  return apiDelete<void>(`/documents/${id}/permanent`);
+}
+
+export function bulkArchive(ids: string[]): Promise<void> {
+  return apiPost<void>('/documents/bulk/archive', { ids });
+}
+
+export function bulkRestore(ids: string[]): Promise<void> {
+  return apiPost<void>('/documents/bulk/restore', { ids });
+}
+
+export function bulkTrash(ids: string[]): Promise<void> {
+  return apiPost<void>('/documents/bulk/trash', { ids });
+}
+
+export function bulkFavorite(ids: string[], value: boolean): Promise<void> {
+  return apiPost<void>('/documents/bulk/favorite', { ids, value });
 }
 
 export function getDocumentStats(): Promise<DocumentStatsResponse> {

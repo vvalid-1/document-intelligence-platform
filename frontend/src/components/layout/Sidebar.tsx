@@ -12,6 +12,8 @@ const NAV = [
   { href: '/documents', label: 'Documents', icon: '⎙' },
   { href: '/search', label: 'Search', icon: '⌕' },
   { href: '/archived', label: 'Archived', icon: '📦' },
+  { href: '/favorites', label: 'Favorites', icon: '★' },
+  { href: '/trash', label: 'Trash', icon: '🗑' },
   { href: '/documents/upload', label: 'Upload', icon: '↑' },
 ];
 
