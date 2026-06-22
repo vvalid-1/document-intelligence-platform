@@ -1,6 +1,6 @@
 # Project Status — Document Intelligence Platform
 
-## Current Version: V1.6
+## Current Version: V1.8
 
 **Stack:** FastAPI · Next.js 14 · PostgreSQL · ChromaDB · Ollama (qwen3:8b / qwen2.5:3b / bge-m3) · Docker Compose
 **Deployment:** CPU-only · No paid APIs · Fully local
@@ -13,19 +13,19 @@
 |---|---|
 | Branch | `master` |
 | Remote | `https://github.com/vvalid-1/document-intelligence-platform` |
-| HEAD | `414a81e` |
+| HEAD | `8c2f426` |
 
 ### Recent Commits (newest first)
 
 | Hash | Message |
 |---|---|
+| `8c2f426` | feat(v1.8): Favorites, Trash Bin, Bulk Actions, Dashboard stats |
+| `2ef0f2d` | feat(v1.7): Archive & Restore Documents |
+| `5c09c80` | docs: add PROJECT_STATUS.md with V1.6 completion status |
 | `414a81e` | feat(v1.6): Global Search across all documents |
 | `22d43cc` | feat(v1.5): OCR support for scanned PDFs and images (JPG/JPEG/PNG) |
 | `2e8c819` | feat(v1.4): Version Comparison and Diff Viewer |
 | `d24e8e8` | feat(v1.3): Translation Agent — EN/FR/AR document translation |
-| `c61ab6a` | feat: dashboard stats (F3) + dark mode (F4) |
-| `48175df` | feat: V1.2 — canvas signature pad + modern UI upgrade |
-| `f0f8d3e` | feat: V1.1 UX Upgrade — PDF viewer, chat history, workspace, timeline, greeting |
 
 ---
 
@@ -81,7 +81,7 @@
 - Upload page accepts image files; Document info shows `image/jpeg` / `image/png`
 - 9 backend tests
 
-### V1.6 — Global Search (shipped — current)
+### V1.6 — Global Search (shipped)
 - `POST /api/v1/search` — embeds query via bge-m3, queries all ChromaDB chunks (no document filter)
 - Groups results by document, ranks groups by best cosine similarity
 - Soft-deleted / inaccessible documents filtered via PostgreSQL post-check
@@ -90,6 +90,57 @@
 - `/search` page: large search input, example queries, grouped result cards, similarity bars, expand/collapse, loading skeleton, no-results state
 - Search added to sidebar navigation
 - 8 backend tests
+
+### V1.7 — Archive & Restore (shipped)
+- `POST /documents/{id}/archive` — sets `is_archived=true`, `archived_at=now()`
+- `POST /documents/{id}/restore` — clears archive flags
+- `GET /documents?archived=true` — archived documents list
+- `GET /documents/stats` filters archived docs from active counts
+- `GET /search` excludes archived documents from results
+- `/archived` page: full archived library with Restore button, pagination
+- Archive / Restore button in document list and document detail header
+- Amber "archived" banner on document detail
+- Archive event in Activity Timeline
+- Migration `0004`: `is_archived`, `archived_at` columns + index
+- 8 backend tests
+
+### V1.8 — Document Management Experience (shipped — current)
+
+#### Favorites / Starred Documents
+- `POST /documents/{id}/favorite` — stars a document (409 if already starred)
+- `POST /documents/{id}/unfavorite` — unstars a document (409 if not starred)
+- `GET /documents?favorite=true` — returns only starred documents
+- Star icon per row in document list (inline toggle, amber when active)
+- Star toggle button in document detail header
+- "Starred" filter tab on the Documents page
+- `/favorites` page: full starred library with Unstar action, pagination
+
+#### Trash Bin
+- `DELETE /documents/{id}` now moves to trash (`is_deleted=true`) — no ChromaDB deletion
+- ChromaDB deletion deferred to permanent delete, enabling instant restore
+- `GET /documents?trashed=true` — lists documents in trash
+- `POST /documents/{id}/untrash` — restores a document from trash
+- `DELETE /documents/{id}/permanent` — admin-only hard delete: deletes ChromaDB vectors first, then removes document row from PostgreSQL
+- `/trash` page: lists trashed docs, Restore button, "Delete forever" button (visible to all, but backend enforces admin-only)
+- Audit actions: `document.trash`, `document.untrash`, `document.permanent_delete`
+
+#### Bulk Actions
+- `POST /documents/bulk/archive` — archive up to 50 documents in one call
+- `POST /documents/bulk/restore` — restore archived documents
+- `POST /documents/bulk/trash` — trash multiple documents
+- `POST /documents/bulk/favorite` — star or unstar multiple documents (`value: bool`)
+- All bulk routes registered before `/{document_id}/…` routes (prevents UUID parse conflict)
+- Documents page: per-row checkboxes, select-all, floating bulk action bar (Archive / Star / Unstar / Trash / Clear)
+
+#### Dashboard Updates
+- `GET /documents/stats` now returns `favorites` (starred active docs) and `trash` (trashed docs) counts
+- Dashboard shows 7 stat cards (added Starred ★ and Trash 🗑)
+- All stat cards are clickable links to the relevant page
+
+#### Infrastructure
+- Migration `0005`: `is_favorite` column + index on `documents`
+- `vector_service.get_document_collection` and `delete_document_chunks` imported at module level in `documents.py` (enables `patch("app.api.v1.documents.get_document_collection", …)` in tests)
+- 19 new backend tests (test_favorites: 6, test_trash: 7, test_bulk: 6) — all passing
 
 ---
 
@@ -100,12 +151,22 @@
 | POST | `/api/v1/auth/register` | First user → admin |
 | POST | `/api/v1/auth/login` | Returns JWT |
 | POST | `/api/v1/auth/sse-token` | Short-lived SSE ticket |
-| GET | `/api/v1/documents` | List documents (paginated) |
+| GET | `/api/v1/documents` | List documents (`archived`, `favorite`, `trashed` filters) |
 | POST | `/api/v1/documents` | Upload document (202) |
-| GET | `/api/v1/documents/stats` | Dashboard counts |
+| GET | `/api/v1/documents/stats` | Dashboard counts (total, ready, reviews, edits, signatures, favorites, trash) |
+| POST | `/api/v1/documents/bulk/archive` | Bulk archive (≤50 docs) |
+| POST | `/api/v1/documents/bulk/restore` | Bulk restore archived |
+| POST | `/api/v1/documents/bulk/trash` | Bulk move to trash |
+| POST | `/api/v1/documents/bulk/favorite` | Bulk star/unstar |
 | GET | `/api/v1/documents/{id}` | Document detail |
 | PATCH | `/api/v1/documents/{id}` | Rename |
-| DELETE | `/api/v1/documents/{id}` | Soft delete |
+| DELETE | `/api/v1/documents/{id}` | Move to trash |
+| DELETE | `/api/v1/documents/{id}/permanent` | Hard delete (admin only) |
+| POST | `/api/v1/documents/{id}/archive` | Archive |
+| POST | `/api/v1/documents/{id}/restore` | Restore from archive |
+| POST | `/api/v1/documents/{id}/favorite` | Star |
+| POST | `/api/v1/documents/{id}/unfavorite` | Unstar |
+| POST | `/api/v1/documents/{id}/untrash` | Restore from trash |
 | GET | `/api/v1/documents/{id}/text` | Full extracted text |
 | GET | `/api/v1/documents/{id}/status` | Processing status |
 | GET | `/api/v1/documents/{id}/status/stream` | SSE processing stream |
@@ -129,10 +190,10 @@
 | Route | Purpose |
 |---|---|
 | `/login` | Auth |
-| `/dashboard` | Stats overview |
-| `/documents` | Document library |
+| `/dashboard` | Stats overview (7 clickable stat cards) |
+| `/documents` | Document library (checkboxes, bulk bar, star toggle, Starred tab) |
 | `/documents/upload` | Upload (PDF/DOCX/TXT/JPG/PNG) |
-| `/documents/[id]` | Document detail, versions, actions |
+| `/documents/[id]` | Document detail, versions, actions, star + archive buttons |
 | `/documents/[id]/chat` | RAG chat |
 | `/documents/[id]/review` | AI review |
 | `/documents/[id]/edit` | Natural language edit |
@@ -140,6 +201,9 @@
 | `/documents/[id]/sign` | Signature |
 | `/documents/[id]/compare` | Diff viewer |
 | `/search` | Global search |
+| `/archived` | Archived documents library |
+| `/favorites` | Starred documents library |
+| `/trash` | Trash bin (Restore + Delete forever) |
 
 ---
 
@@ -156,6 +220,12 @@
 | `test_translations.py` | FR/AR translation, 9 tests | |
 | `test_ocr.py` | PNG/JPEG upload, magic bytes, extract fn, 9 tests | |
 | `test_search.py` | grouping, RBAC, deleted doc filter, 503 path, 8 tests | |
+| `test_archive.py` | archive/restore, list filter, search exclusion, 8 tests | |
+| `test_favorites.py` | star/unstar, 409 guard, filter, stats, 6 tests | |
+| `test_trash.py` | trash/untrash, permanent delete, stats, 404 path, 7 tests | |
+| `test_bulk.py` | bulk archive/restore/trash/favorite, empty body guard, 6 tests | |
+
+**V1.8 new tests: 19/19 passing. Frontend build: clean (no TypeScript errors).**
 
 ---
 
@@ -168,8 +238,10 @@
 | Chat/Review/Edit model was `qwen3:8b` (slow on CPU) | Fixed | Switched to `qwen2.5:3b` — faster on CPU-only |
 | Translation `chk_agent_name` constraint | Fixed | Migration `0003` + model updated in V1.3 |
 | Backend has no dev bind mount | Known | Every code change requires `docker compose build backend && up -d backend` |
+| Docker Desktop Windows bind mount lag | Known | File changes don't sync into running container immediately; use `docker cp` for hot-fix or rebuild |
 | No rate limiting on `/search` endpoint | Low | Rate limiting exists on other endpoints (slowapi); search should be added before production |
 | `Alembic script.py.mako` missing in container | Known | Write migrations manually on host; they bake in at build time |
+| Trash page "Delete forever" visible to all roles | Low | Backend enforces admin-only (403 for non-admin); UI does not hide the button for non-admins |
 
 ---
 
@@ -177,41 +249,36 @@
 
 | ID | Feature | Notes |
 |---|---|---|
-| V1.7 | Report Generator | Auto-generate summary reports from documents |
-| V1.8 | Batch Operations | Select multiple documents for bulk translate/review |
-| — | Rate limiting on `/search` | Add slowapi limiter to global search endpoint |
-| — | Search pagination | Currently returns top 20; add cursor/page support |
+| V1.9 | Report Generator | Auto-generate structured PDF report from one or more documents |
+| — | Rate limiting on `/search` | Add slowapi limiter (e.g. 20 req/min per user) to `POST /api/v1/search` |
+| — | Search pagination | Add `offset` / `page` to `SearchRequest` and `SearchResponse` |
 | — | Viewer role UI | Currently no viewer-specific UI restrictions |
 | — | Document sharing | Share read-only link without login |
 | — | Webhook / notification | Notify when async processing completes |
+| — | Hide "Delete forever" for non-admins | Front-end role check on Trash page |
 
 ---
 
-## V1.6 Status: COMPLETE
+## V1.8 Status: COMPLETE
 
-All deliverables shipped and committed:
+All deliverables shipped and committed (`8c2f426`):
 
-- [x] `POST /api/v1/search` endpoint — groups by document, RBAC, no LLM
-- [x] `backend/app/schemas/search.py` — `SearchRequest`, `SearchGroup`, `SearchResponse`
-- [x] `backend/app/api/v1/search.py` — full implementation
-- [x] `backend/tests/api/test_search.py` — 8/8 passing
-- [x] `frontend/src/lib/api/search.ts` — API client
-- [x] `frontend/src/types/api.ts` — `SearchHit`, `SearchGroup`, `SearchResponse` types
-- [x] `frontend/src/app/(app)/search/page.tsx` — full search UI
-- [x] `frontend/src/components/layout/Sidebar.tsx` — Search nav item added
-- [x] Frontend Docker build: `✓ Compiled successfully`
-- [x] Committed: `414a81e` — pushed to `origin/master`
-
----
-
-## Next Recommended Tasks
-
-1. **V1.7 — Report Generator**: Auto-generate a structured PDF report from one or multiple documents (executive summary, key findings, recommendations). Reuses RAG pipeline + editor-style PDF output.
-
-2. **Rate-limit `/search`**: Add `slowapi` limiter (e.g. 20 req/min per user) to `POST /api/v1/search` — currently unprotected against abuse.
-
-3. **Search pagination**: Add `offset` / `page` to `SearchRequest` and `SearchResponse` so large result sets can be paginated.
-
-4. **Run full test suite**: `docker compose exec backend pytest -v` — confirm all 9 test files pass together before next feature.
-
-5. **Ollama model check**: Verify `qwen2.5:3b` and `bge-m3` are still loaded in the Ollama container (`docker compose exec ollama ollama list`).
+- [x] Migration `0005` — `is_favorite` column + index
+- [x] `POST /documents/{id}/favorite` and `/unfavorite`
+- [x] `POST /documents/{id}/untrash`
+- [x] `DELETE /documents/{id}/permanent` (admin only)
+- [x] `DELETE /documents/{id}` changed to move-to-trash (no ChromaDB deletion)
+- [x] `GET /documents?favorite=true` and `?trashed=true`
+- [x] `GET /documents/stats` returns `favorites` + `trash` counts
+- [x] `POST /documents/bulk/archive|restore|trash|favorite`
+- [x] `backend/tests/api/test_favorites.py` — 6/6 passing
+- [x] `backend/tests/api/test_trash.py` — 7/7 passing
+- [x] `backend/tests/api/test_bulk.py` — 6/6 passing
+- [x] `/favorites` page — Starred Documents library
+- [x] `/trash` page — Trash Bin with Restore + Delete forever
+- [x] `/documents` page — checkboxes, bulk bar, star toggle, Starred tab
+- [x] `/documents/[id]` — star toggle button in header
+- [x] `/dashboard` — 7 stat cards, all clickable
+- [x] Sidebar — Favorites (★) and Trash (🗑) nav items
+- [x] Frontend Docker build: `✓ Ready in 109ms` (no TypeScript errors)
+- [x] Pushed to `origin/master`
