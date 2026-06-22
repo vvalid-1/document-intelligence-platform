@@ -40,3 +40,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Local dev / debug scripts (not part of the project)
+reset_pw.py
+test_upload.py
